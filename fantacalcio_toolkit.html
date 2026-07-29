@@ -1,0 +1,1542 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fantacalcio Toolkit</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0052E0">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Fantacalcio">
+<style>
+  :root{
+    --bg: #6C6E6B;
+    --surface: #FFFFFF;
+    --surface2: #EAF2FF;
+    --line: #D6E6FB;
+    --pitch: #0052E0;
+    --pitch-bright: #0041B3;
+    --chalk: #0B1220;
+    --muted: #1F2937;
+    --alert: #DC2626;
+    --gold: #B45309;
+    --btn-text: #FFFFFF;
+    --header-bg: #0052E0;
+    --header-accent: #38BDF8;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background: var(--bg);
+    color: var(--chalk);
+    font-family: -apple-system, 'Segoe UI', system-ui, sans-serif;
+    padding: 0 0 60px;
+  }
+  .app-header{
+    background: var(--header-bg);
+    padding: 22px 16px 20px;
+    border-bottom: 3px solid var(--header-accent);
+    margin-bottom: 20px;
+  }
+  h1{
+    font-weight: 600; letter-spacing: -0.3px;
+    font-size: 19px; color: #FFFFFF; margin: 0 0 3px;
+  }
+  .sub{ color: #0B1220; font-size: 13px; margin: 0; }
+  .page-content{ padding: 0 16px; }
+
+  /* Tabs */
+  .tabs{ display:flex; gap:4px; margin-bottom: 20px; border-bottom: 1px solid var(--line); }
+  .tab-btn{
+    flex:1; background: transparent; border: none; color: var(--muted);
+    font-size: 13.5px; font-weight: 500; padding: 10px 6px; cursor: pointer;
+    border-bottom: 2px solid transparent;
+  }
+  .tab-btn.active{ color: var(--chalk); font-weight: 600; border-bottom-color: var(--pitch); }
+  .tab-panel{ display:none; }
+  .tab-panel.active{ display:block; }
+
+  /* Scoreboard (shared look) */
+  .scoreboard{
+    background: var(--surface); border: 1px solid var(--line); border-radius: 12px;
+    padding: 18px; display:flex; justify-content: space-between; align-items:center;
+    margin-bottom: 18px; gap: 10px;
+  }
+  .score-cell{ text-align:center; flex:1; }
+  .score-label{ font-size:11px; color:var(--muted); margin-bottom:4px;}
+  .score-num{
+    font-weight:600; font-size: 26px;
+    color: var(--chalk); font-variant-numeric: tabular-nums;
+  }
+  .score-num.spent{ color: var(--gold); }
+  .score-num.over{ color: var(--alert); }
+  .divider{ width:1px; height:34px; background: var(--line); }
+
+  /* Role cards */
+  .roles{ display:grid; grid-template-columns: repeat(2,1fr); gap:10px; margin-bottom:18px; }
+  .role-card{ background: var(--surface); border:1px solid var(--line); border-radius:10px; padding:12px 14px; }
+  .role-top{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;}
+  .role-name{ font-weight:600; font-size:13.5px; }
+  .role-slots{ font-size:12px; color:var(--muted); }
+  .role-bar-track{ height:5px; background: var(--surface2); border-radius:4px; overflow:hidden; margin-bottom:7px; }
+  .role-bar-fill{ height:100%; background: var(--pitch); border-radius:4px; transition: width .25s; }
+  .role-bar-fill.over{ background: var(--alert); }
+  .role-nums{ font-size:11.5px; color:var(--muted); }
+
+  /* Panels / forms */
+  .panel{ background: var(--surface); border:1px solid var(--line); border-radius:12px; padding:16px; margin-bottom:18px; }
+  .panel h2{ font-size:12.5px; font-weight:600; color: var(--chalk); margin:0 0 12px; }
+  .row{ display:flex; gap:8px; flex-wrap: wrap; margin-bottom:8px; }
+  .field{ display:flex; flex-direction:column; gap:4px; }
+  .field label{ font-size:11px; color:var(--muted); }
+  input, select, textarea{
+    background: var(--surface2); border:1px solid var(--line); color: var(--chalk);
+    border-radius:7px; padding: 9px 10px; font-size:14px; outline:none; font-family: inherit;
+  }
+  input:focus, select:focus, textarea:focus{ border-color: var(--pitch); background: var(--surface); }
+  input[type=number]{ width:90px; }
+  textarea{ width:100%; min-height:140px; resize: vertical; font-family: ui-monospace, monospace; font-size:12.5px; line-height:1.5; }
+  .hint{ font-size:12px; color: var(--muted); margin-top:6px; line-height:1.5; }
+  .hint code{ color: var(--pitch-bright); background: var(--surface2); padding:1px 4px; border-radius:4px; }
+  #t-name{ flex:1 1 140px; min-width:120px; }
+  #t-role{ flex:0 0 90px; }
+  #t-price{ flex:0 0 80px; }
+
+  button{
+    border:none; border-radius:7px; padding: 10px 16px; font-size:13.5px; font-weight:600;
+    cursor:pointer; background: var(--pitch); color: var(--btn-text);
+  }
+  button:active{ background: var(--pitch-bright); }
+  button.secondary{ background: transparent; color: var(--muted); border:1px solid var(--line); font-weight:500; }
+  button.secondary:active{ background: var(--surface2); }
+  .err{ color: var(--alert); font-size:12.5px; margin-top:8px; white-space:pre-line; }
+  .status{ color: var(--muted); font-size:12px; margin-top:8px; }
+
+  /* Roster / results lists */
+  .roster-group{
+    background: var(--surface); border: 1px solid var(--line); border-radius: 12px;
+    padding: 12px 14px; margin-bottom:14px;
+  }
+  .roster-group h3{
+    font-size:11.5px; font-weight:600; color:var(--muted);
+    border-bottom:1px solid var(--line); padding-bottom:7px; margin:0 0 6px;
+  }
+  .player-row{ display:flex; justify-content:space-between; align-items:center; padding:9px 2px; border-bottom:1px solid var(--line); font-size:14px; }
+  .player-row:last-child{ border-bottom:none; }
+  .player-name{ font-weight:500; }
+  .player-right{ display:flex; align-items:center; gap:10px; }
+  .player-meta{ display:flex; gap:12px; color: var(--muted); font-size: 13px; }
+  .player-price, .player-meta .price{ color: var(--gold); font-weight:600; }
+  .player-meta .fvm{ color: var(--pitch-bright); }
+  .del-btn{
+    background: transparent; color: var(--muted); border:1px solid var(--line);
+    border-radius:7px; width:26px; height:26px; padding:0; font-size:14px; line-height:1;
+  }
+  .del-btn:active{ color: var(--alert); border-color: var(--alert); }
+  .empty{ color: var(--muted); font-size:13px; padding:10px 2px; }
+
+  .footer-actions{ display:flex; justify-content: space-between; align-items:center; margin-top:22px; flex-wrap: wrap; gap: 10px; }
+  #t-resetBtn{ background: transparent; color: var(--muted); border:1px solid var(--line); font-weight:500; }
+  .save-status{ font-size:11.5px; color:var(--muted); }
+
+  /* Abbinamenti: rank grid */
+  .rank-grid{ max-height: 340px; overflow-y: auto; }
+  .rank-row{ display:flex; justify-content:space-between; align-items:center; padding:7px 2px; border-bottom:1px solid var(--line); }
+  .rank-row:last-child{ border-bottom:none; }
+  .rank-row input[type=number]{ width:64px; }
+  .team-name{ font-size:13.5px; font-weight:500; }
+
+  /* Abbinamenti: toggle Forza offensiva/difensiva */
+  .tab-toggle{ background: transparent; color: var(--muted); border:1px solid var(--line); font-weight:500; }
+  .tab-toggle.active{ background: var(--pitch); color: var(--btn-text); border-color:var(--pitch); font-weight:600; }
+  .tab-toggle:active{ background: var(--surface2); }
+
+  /* Abbinamenti: tag difficoltà (5 fasce) */
+  .tag{ display:inline-block; padding:2px 8px; border-radius:20px; font-size:11.5px; font-weight:600; color:#FFFFFF; }
+  .tag.bassa{ background: #15803D; }
+  .tag.medio-bassa{ background: #65A30D; }
+  .tag.media{ background: var(--muted); }
+  .tag.medio-alta{ background: #EA580C; }
+  .tag.alta{ background: var(--alert); }
+
+  /* Abbinamenti: tabella calendario */
+  .scroll-table{ overflow-x:auto; border:1px solid var(--line); border-radius:8px; }
+  .scroll-table table{ border-collapse:collapse; width:100%; font-size:12.5px; }
+  .scroll-table th, .scroll-table td{ padding:7px 8px; text-align:left; white-space:nowrap; border-bottom:1px solid var(--line); }
+  .scroll-table th{ background: var(--surface2); color:var(--muted); font-weight:600; font-size:11.5px; }
+  .scroll-table tr:last-child td{ border-bottom:none; }
+  .scroll-table tr.row-bad{ background: rgba(220,38,38,0.08); }
+  .scroll-table td.giornata{ font-weight:600; color:var(--muted); }
+
+  /* Varianti score-num (coerenti con .spent/.over esistenti) */
+  .score-num.mid{ color: var(--gold); }
+  .score-num.bad{ color: var(--alert); }
+</style>
+</head>
+<body>
+
+  <div class="app-header">
+    <h1>⚽ Fantacalcio Toolkit</h1>
+    <div class="sub">Quattro strumenti in una pagina: asta live, ottimizzatore budget, lista nomi e abbinamenti reparto</div>
+  </div>
+
+  <div class="page-content">
+
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="asta">🔨 Asta Live</button>
+    <button class="tab-btn" data-tab="opt">📊 Ottimizzatore Budget</button>
+    <button class="tab-btn" data-tab="lista">📝 Lista Nomi</button>
+    <button class="tab-btn" data-tab="abbin">🔗 Abbinamenti</button>
+  </div>
+
+  <!-- ===================== TAB: ASTA LIVE ===================== -->
+  <div class="tab-panel active" id="tab-asta">
+
+    <div class="panel">
+      <h2>⚙️ Impostazioni lega</h2>
+      <div class="row">
+        <div class="field"><label>Budget totale</label><input type="number" id="t-setBudget" value="500" min="1"></div>
+        <div class="field"><label>Slot Portieri</label><input type="number" id="t-setSlotsP" value="3" min="0" max="10"></div>
+        <div class="field"><label>Slot Difensori</label><input type="number" id="t-setSlotsD" value="8" min="0" max="12"></div>
+        <div class="field"><label>Slot Centrocampisti</label><input type="number" id="t-setSlotsC" value="8" min="0" max="12"></div>
+        <div class="field"><label>Slot Attaccanti</label><input type="number" id="t-setSlotsA" value="6" min="0" max="10"></div>
+      </div>
+      <div class="row">
+        <button id="t-applySettings">Applica</button>
+      </div>
+      <div class="hint">Il budget per ruolo si ricalcola automaticamente mantenendo le proporzioni standard (6% POR · 17% DIF · 33% CEN · 44% ATT). Le impostazioni restano salvate.</div>
+      <div class="hint">Se completi un ruolo spendendo meno (o più) del previsto, la differenza si ridistribuisce automaticamente sui ruoli ancora aperti, proporzionalmente al loro peso.</div>
+      <div class="hint">Se apri questo file fuori da Claude.ai (doppio click sul file scaricato), usa "Scarica backup" per salvare lo stato su un file e "Carica backup" per ripristinarlo la volta dopo — anche su un altro PC.</div>
+    </div>
+
+    <div class="scoreboard">
+      <div class="score-cell">
+        <div class="score-label">💸 Speso</div>
+        <div class="score-num spent" id="t-scoreSpent">0</div>
+      </div>
+      <div class="divider"></div>
+      <div class="score-cell">
+        <div class="score-label">💰 Rimasti</div>
+        <div class="score-num" id="t-scoreLeft">500</div>
+      </div>
+      <div class="divider"></div>
+      <div class="score-cell">
+        <div class="score-label">🎽 Slot</div>
+        <div class="score-num" id="t-scoreSlots" style="font-size:24px;">0/25</div>
+      </div>
+    </div>
+
+    <div class="roles" id="t-rolesGrid"></div>
+
+    <div class="panel">
+      <h2>✅ Aggiungi giocatore preso</h2>
+      <div class="row">
+        <input id="t-name" type="text" placeholder="Nome giocatore" />
+        <select id="t-role">
+          <option value="P">POR</option>
+          <option value="D">DIF</option>
+          <option value="C">CEN</option>
+          <option value="A">ATT</option>
+        </select>
+        <input id="t-price" type="number" min="1" placeholder="Crediti" />
+        <button id="t-addBtn">➕ Aggiungi</button>
+      </div>
+      <div class="err" id="t-errMsg"></div>
+    </div>
+
+    <div id="t-rosterList"></div>
+
+    <div class="footer-actions">
+      <button id="t-resetBtn">🗑️ Azzera tabellone</button>
+      <div style="display:flex; gap:8px;">
+        <button class="secondary" id="t-downloadBackup">⬇️ Scarica backup</button>
+        <button class="secondary" id="t-uploadBackupBtn">⬆️ Carica backup</button>
+        <input type="file" id="t-uploadBackupFile" accept="application/json" style="display:none;">
+      </div>
+      <div class="save-status" id="t-saveStatus"></div>
+    </div>
+  </div>
+
+  <!-- ===================== TAB: OTTIMIZZATORE ===================== -->
+  <div class="tab-panel" id="tab-opt">
+
+    <div class="panel">
+      <h2>⚙️ Parametri</h2>
+      <div class="row">
+        <div class="field"><label>Budget totale</label><input type="number" id="o-budget" value="500" min="1"></div>
+        <div class="field"><label>Slot Portieri</label><input type="number" id="o-slotsP" value="3" min="0" max="10"></div>
+        <div class="field"><label>Slot Difensori</label><input type="number" id="o-slotsD" value="8" min="0" max="12"></div>
+        <div class="field"><label>Slot Centrocampisti</label><input type="number" id="o-slotsC" value="8" min="0" max="12"></div>
+        <div class="field"><label>Slot Attaccanti</label><input type="number" id="o-slotsA" value="6" min="0" max="10"></div>
+      </div>
+      <div class="hint">Modifica gli slot se la tua lega ha un formato diverso da 3-8-8-6.</div>
+    </div>
+
+    <div class="panel">
+      <h2>📋 Listone (incolla i dati)</h2>
+      <textarea id="o-playerData" placeholder="P;Meret;12;35;1
+D;Bastoni;15;42;1.2
+C;Barella;22;90;1
+A;Lautaro;28;150;0.85
+..."></textarea>
+      <div class="hint">Una riga per giocatore, formato: <code>Ruolo;Nome;Quotazione;FVM;Fiducia</code> — separatore <code>;</code> o <code>,</code> o tab. Ruolo = P / D / C / A.</div>
+      <div class="hint"><b>Fiducia</b> (opzionale, colonna 5) è un moltiplicatore tuo personale sul FVM: <code>1</code> = ti fidi del numero così com'è, <code>1.3</code> = pensi renda il 30% più del previsto, <code>0.7</code> = pensi renda il 30% in meno. Se ometti la colonna, resta neutro (1).</div>
+      <div class="row" style="margin-top:10px;">
+        <button id="o-calcBtn">🧮 Calcola squadra ottimale</button>
+        <button class="secondary" id="o-exampleBtn">🎲 Carica esempio</button>
+      </div>
+      <div class="err" id="o-errMsg"></div>
+      <div class="status" id="o-statusMsg"></div>
+    </div>
+
+    <div id="o-results"></div>
+  </div>
+
+  <!-- ===================== TAB: LISTA NOMI ===================== -->
+  <div class="tab-panel" id="tab-lista">
+
+    <div class="scoreboard" id="ln-summary"></div>
+
+    <div class="panel">
+      <h2>➕ Aggiungi giocatore</h2>
+      <div class="row">
+        <select id="ln-ruolo">
+          <option value="P">🧤 POR</option>
+          <option value="D">🛡️ DIF</option>
+          <option value="C">🎯 CEN</option>
+          <option value="A">⚽ ATT</option>
+        </select>
+        <input id="ln-nome" type="text" placeholder="Nome giocatore" style="flex:1 1 140px; min-width:120px;">
+        <input id="ln-squadra" type="text" placeholder="Squadra" style="flex:0 0 130px;">
+        <select id="ln-status">
+          <option value="Confermato">✅ Confermato</option>
+          <option value="Da valutare">🟡 Da valutare</option>
+          <option value="Alternativa">⚪ Alternativa</option>
+        </select>
+      </div>
+      <div class="row">
+        <input id="ln-note" type="text" placeholder="Nota (opzionale)" style="flex:1;">
+        <button id="ln-addBtn">➕ Aggiungi</button>
+      </div>
+      <div class="err" id="ln-errMsg"></div>
+    </div>
+
+    <div id="ln-list"></div>
+
+    <div class="footer-actions">
+      <button id="ln-resetBtn">🗑️ Azzera lista</button>
+      <div style="display:flex; gap:8px;">
+        <button class="secondary" id="ln-downloadBackup">⬇️ Scarica backup</button>
+        <button class="secondary" id="ln-uploadBackupBtn">⬆️ Carica backup</button>
+        <input type="file" id="ln-uploadBackupFile" accept="application/json" style="display:none;">
+      </div>
+      <div class="save-status" id="ln-saveStatus"></div>
+    </div>
+  </div>
+
+  <!-- ===================== TAB: ABBINAMENTI ===================== -->
+  <div class="tab-panel" id="tab-abbin">
+
+  <div class="panel">
+    <h2>⚙️ 1. Ranking forza squadre (attacco e difesa separati)</h2>
+    <div class="hint">Due ranking indipendenti (1 = più debole, 20 = più forte): <b>forza offensiva</b> (quanto è pericoloso l'attacco di una squadra) e <b>forza difensiva</b> (quanto è solida la sua difesa). Sono di default una mia stima soggettiva — <b>modificali liberamente</b>.</div>
+    <div class="row" style="margin-top:10px;">
+      <button class="tab-toggle active" id="ab-showOffense">⚽ Forza offensiva</button>
+      <button class="tab-toggle" id="ab-showDefense">🛡️ Forza difensiva</button>
+    </div>
+    <div class="rank-grid" id="ab-offenseGrid" style="margin-top:12px;"></div>
+    <div class="rank-grid" id="ab-defenseGrid" style="margin-top:12px; display:none;"></div>
+  </div>
+
+  <div class="panel">
+    <h2>📊 2. Fasce di difficoltà (5 livelli)</h2>
+    <div class="hint">Il rank 1-20 dell'avversario viene diviso in 5 fasce. Imposta i 4 confini tra una fascia e la successiva (valori crescenti). Default: divisione uniforme in blocchi da 4.</div>
+    <div class="row" style="margin-top:8px;">
+      <div class="field"><label>🟢 Bassa fino a</label><input type="number" id="ab-th1" value="5" min="1" max="19"></div>
+      <div class="field"><label>🟩 Medio-bassa fino a</label><input type="number" id="ab-th2" value="8" min="2" max="19"></div>
+      <div class="field"><label>🟡 Media fino a</label><input type="number" id="ab-th3" value="13" min="3" max="19"></div>
+      <div class="field"><label>🟠 Medio-alta fino a</label><input type="number" id="ab-th4" value="18" min="4" max="19"></div>
+      <div class="field"><label>Incidenza qualità propria (%)</label><input type="number" id="ab-qualityWeight" value="0" min="0" max="100"></div>
+    </div>
+    <div class="hint">Oltre alla soglia "Medio-alta fino a" scatta automaticamente 🔴 <b>Alta</b>. "Incidenza qualità propria" abbassa l'indice se le squadre selezionate sono di per sé deboli, anche con calendario comodo sulla carta.</div>
+    <div class="row" style="margin-top:10px;">
+      <label style="display:flex; align-items:center; gap:8px; font-size:13px;"><input type="checkbox" id="ab-applyHomeAway" checked style="width:auto;"> Applica bonus/malus casa-trasferta</label>
+      <div class="field"><label>Punti casa/trasferta</label><input type="number" id="ab-homeAwayPoints" value="0.5" min="0" max="3" step="0.25"></div>
+    </div>
+    <div class="hint">Se attivo, giocare in <b>casa</b> rende il match leggermente più facile (rank effettivo dell'avversario ridotto), giocare in <b>trasferta</b> leggermente più difficile (rank aumentato) — di quanti punti lo decidi tu.</div>
+    <div class="row" style="margin-top:10px;">
+      <label style="display:flex; align-items:center; gap:8px; font-size:13px;"><input type="checkbox" id="ab-applyModificatore" checked style="width:auto;"> Modificatore difesa attivo nella mia lega</label>
+      <div class="field"><label>Amplificazione P/D con modificatore</label><input type="number" id="ab-modAmplifier" value="1.8" min="1" max="3" step="0.1"></div>
+    </div>
+    <div class="hint">Il modificatore difesa premia/penalizza <b>solo Portieri e Difensori</b> in base ai gol subiti — quindi con modificatore attivo, un abbinamento sfavorevole pesa di più per questi due ruoli (le fasce difficili vengono amplificate). Per Centrocampisti/Attaccanti non cambia nulla, il modificatore non li riguarda.</div>
+  </div>
+
+  <div class="panel">
+    <h2>🔍 3. Scegli ruolo, numero squadre e abbinamento</h2>
+    <div class="row">
+      <div class="field">
+        <label>Ruolo</label>
+        <select id="ab-ruolo">
+          <option value="P">🧤 Portieri</option>
+          <option value="D">🛡️ Difensori</option>
+          <option value="C">🎯 Centrocampisti</option>
+          <option value="A">⚽ Attaccanti</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Numero squadre</label>
+        <select id="ab-numTeams">
+          <option value="2">Coppia (2)</option>
+          <option value="3">Terzetto (3)</option>
+        </select>
+      </div>
+    </div>
+    <div class="hint" id="ab-roleHint"></div>
+    <div class="row" id="ab-teamSelects" style="margin-top:10px;"></div>
+    <button id="ab-calcBtn">🧮 Calcola abbinamento</button>
+  </div>
+
+  <div id="ab-results"></div>
+
+  </div>
+
+  </div>
+
+<script>
+// ---------- Tabs ----------
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+  });
+});
+
+function escapeHtml(str){
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+</script>
+
+<script>
+// Polyfill di window.storage per l'uso fuori da Claude.ai (es. PWA standalone):
+// si attiva solo se window.storage non esiste già (su Claude.ai resta quello vero).
+if (!window.storage) {
+  window.storage = {
+    get: (key) => Promise.resolve({ value: localStorage.getItem(key) }),
+    set: (key, value) => { localStorage.setItem(key, value); return Promise.resolve(); }
+  };
+}
+</script>
+
+<script>
+// ===================== ASTA LIVE MODULE =====================
+(function(){
+  const ROLE_LABELS = { P: '🧤 Portieri', D: '🛡️ Difensori', C: '🎯 Centrocampisti', A: '⚽ Attaccanti' };
+  const ROLE_PCT = { P: 0.06, D: 0.17, C: 0.33, A: 0.44 }; // proporzioni standard, sommano a 1
+  const DEFAULT_SETTINGS = { budget: 500, slots: { P: 3, D: 8, C: 8, A: 6 } };
+  const STORAGE_KEY = 'asta-players';
+  const SETTINGS_KEY = 'asta-settings';
+
+  let players = [];
+  let settings = JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
+
+  function roleBudgets(){
+    const out = {};
+    Object.keys(ROLE_PCT).forEach(r=>{
+      out[r] = Math.round(settings.budget * ROLE_PCT[r]);
+    });
+    return out;
+  }
+
+  // Redistributes surplus/deficit from completed roles onto roles still open,
+  // proportionally to their original budget weight.
+  function roleBudgetsAdjusted(){
+    const base = roleBudgets();
+    const adjusted = { ...base };
+    const incomplete = [];
+    let surplus = 0;
+
+    Object.keys(ROLE_LABELS).forEach(r=>{
+      const slots = settings.slots[r];
+      const count = players.filter(p=>p.role===r).length;
+      const spent = players.filter(p=>p.role===r).reduce((s,p)=>s+p.price,0);
+      if(slots === 0) return;
+      if(count >= slots){
+        surplus += (base[r] - spent); // positivo = risparmiato, negativo = sforato
+      } else {
+        incomplete.push(r);
+      }
+    });
+
+    const totalIncompletePct = incomplete.reduce((s,r)=> s + ROLE_PCT[r], 0);
+    if(incomplete.length > 0 && totalIncompletePct > 0){
+      incomplete.forEach(r=>{
+        adjusted[r] = base[r] + surplus * (ROLE_PCT[r] / totalIncompletePct);
+      });
+    }
+    return { adjusted, base };
+  }
+
+  function totalSlots(){
+    return Object.values(settings.slots).reduce((a,b)=>a+b, 0);
+  }
+
+  async function loadState(){
+    try{
+      const res = await window.storage.get(STORAGE_KEY);
+      if(res && res.value){ players = JSON.parse(res.value); }
+    }catch(e){ players = []; }
+    try{
+      const res2 = await window.storage.get(SETTINGS_KEY);
+      if(res2 && res2.value){ settings = JSON.parse(res2.value); }
+    }catch(e){ /* keep defaults */ }
+    syncSettingsInputs();
+    render();
+  }
+
+  function syncSettingsInputs(){
+    document.getElementById('t-setBudget').value = settings.budget;
+    document.getElementById('t-setSlotsP').value = settings.slots.P;
+    document.getElementById('t-setSlotsD').value = settings.slots.D;
+    document.getElementById('t-setSlotsC').value = settings.slots.C;
+    document.getElementById('t-setSlotsA').value = settings.slots.A;
+  }
+
+  async function saveSettings(){
+    try{ await window.storage.set(SETTINGS_KEY, JSON.stringify(settings)); }catch(e){}
+  }
+
+  async function saveState(){
+    const statusEl = document.getElementById('t-saveStatus');
+    try{
+      await window.storage.set(STORAGE_KEY, JSON.stringify(players));
+      statusEl.textContent = 'Salvato';
+      setTimeout(()=>{ statusEl.textContent=''; }, 1200);
+    }catch(e){
+      statusEl.textContent = 'Errore salvataggio';
+    }
+  }
+
+  document.getElementById('t-applySettings').addEventListener('click', ()=>{
+    const newBudget = parseInt(document.getElementById('t-setBudget').value, 10);
+    const newSlots = {
+      P: parseInt(document.getElementById('t-setSlotsP').value, 10),
+      D: parseInt(document.getElementById('t-setSlotsD').value, 10),
+      C: parseInt(document.getElementById('t-setSlotsC').value, 10),
+      A: parseInt(document.getElementById('t-setSlotsA').value, 10),
+    };
+    if(!newBudget || newBudget < 1){ alert('Inserisci un budget valido.'); return; }
+    settings = { budget: newBudget, slots: newSlots };
+    saveSettings();
+    render();
+  });
+
+  function render(){
+    const { adjusted: ROLE_BUDGET, base: ROLE_BUDGET_BASE } = roleBudgetsAdjusted();
+    const ROLE_SLOTS = settings.slots;
+    const totalSpent = players.reduce((s,p)=>s+p.price, 0);
+    const totalLeft = settings.budget - totalSpent;
+    document.getElementById('t-scoreSpent').textContent = totalSpent;
+    const leftEl = document.getElementById('t-scoreLeft');
+    leftEl.textContent = totalLeft;
+    leftEl.classList.toggle('over', totalLeft < 0);
+    document.getElementById('t-scoreSlots').textContent = players.length + '/' + totalSlots();
+
+    const grid = document.getElementById('t-rolesGrid');
+    grid.innerHTML = '';
+    Object.keys(ROLE_LABELS).forEach(role=>{
+      const roleSpent = players.filter(p=>p.role===role).reduce((s,p)=>s+p.price,0);
+      const roleCount = players.filter(p=>p.role===role).length;
+      const slots = ROLE_SLOTS[role];
+      const completed = slots > 0 && roleCount >= slots;
+      const budget = completed ? ROLE_BUDGET_BASE[role] : ROLE_BUDGET[role];
+      const pct = budget > 0 ? Math.min(100, (roleSpent/budget)*100) : 0;
+      const over = roleSpent > budget;
+      const delta = Math.round(budget - ROLE_BUDGET_BASE[role]);
+      const deltaTag = (!completed && delta !== 0)
+        ? `<span style="color:${delta>0?'var(--pitch-bright)':'var(--alert)'}"> (${delta>0?'+':''}${delta} ridistribuiti)</span>`
+        : '';
+      const card = document.createElement('div');
+      card.className = 'role-card';
+      card.innerHTML = `
+        <div class="role-top">
+          <span class="role-name">${ROLE_LABELS[role]}</span>
+          <span class="role-slots">${roleCount}/${slots}</span>
+        </div>
+        <div class="role-bar-track"><div class="role-bar-fill ${over?'over':''}" style="width:${pct}%"></div></div>
+        <div class="role-nums">${roleSpent} / ${Math.round(budget)} cr &nbsp;·&nbsp; rimasti ${Math.round(budget-roleSpent)}${deltaTag}</div>
+      `;
+      grid.appendChild(card);
+    });
+
+    const listEl = document.getElementById('t-rosterList');
+    listEl.innerHTML = '';
+    Object.keys(ROLE_LABELS).forEach(role=>{
+      const group = players.filter(p=>p.role===role);
+      if(group.length===0) return;
+      const groupDiv = document.createElement('div');
+      groupDiv.className = 'roster-group';
+      const rows = group.map(p=>`
+        <div class="player-row">
+          <span class="player-name">${escapeHtml(p.name)}</span>
+          <span class="player-right">
+            <span class="player-price">${p.price} cr</span>
+            <button class="del-btn" data-id="${p.id}">✕</button>
+          </span>
+        </div>
+      `).join('');
+      groupDiv.innerHTML = `<h3>${ROLE_LABELS[role]}</h3>${rows}`;
+      listEl.appendChild(groupDiv);
+    });
+    if(players.length===0){
+      listEl.innerHTML = '<div class="empty">Nessun giocatore ancora preso. Aggiungili qui sopra man mano che li vinci all\'asta.</div>';
+    }
+
+    listEl.querySelectorAll('.del-btn').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        players = players.filter(p=>p.id !== btn.dataset.id);
+        saveState();
+        render();
+      });
+    });
+  }
+
+  document.getElementById('t-addBtn').addEventListener('click', ()=>{
+    const nameEl = document.getElementById('t-name');
+    const roleEl = document.getElementById('t-role');
+    const priceEl = document.getElementById('t-price');
+    const errEl = document.getElementById('t-errMsg');
+    errEl.textContent = '';
+
+    const name = nameEl.value.trim();
+    const role = roleEl.value;
+    const price = parseInt(priceEl.value, 10);
+
+    if(!name){ errEl.textContent = 'Inserisci il nome del giocatore.'; return; }
+    if(!price || price < 1){ errEl.textContent = 'Inserisci un costo valido.'; return; }
+
+    const roleCount = players.filter(p=>p.role===role).length;
+    if(roleCount >= settings.slots[role]){
+      errEl.textContent = `Slot ${ROLE_LABELS[role]} già completi (${settings.slots[role]}/${settings.slots[role]}).`;
+    }
+
+    players.push({ id: Date.now().toString(36)+Math.random().toString(36).slice(2,6), name, role, price });
+    nameEl.value = '';
+    priceEl.value = '';
+    nameEl.focus();
+    saveState();
+    render();
+  });
+
+  document.getElementById('t-price').addEventListener('keydown', (e)=>{
+    if(e.key === 'Enter') document.getElementById('t-addBtn').click();
+  });
+
+  document.getElementById('t-resetBtn').addEventListener('click', ()=>{
+    if(confirm('Azzerare tutto il tabellone? Questa azione non si può annullare.')){
+      players = [];
+      saveState();
+      render();
+    }
+  });
+
+  document.getElementById('t-downloadBackup').addEventListener('click', ()=>{
+    const backup = { settings, players, exportedAt: new Date().toISOString() };
+    const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const stamp = new Date().toISOString().slice(0,16).replace(/[:T]/g,'-');
+    a.href = url;
+    a.download = `asta-backup-${stamp}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  });
+
+  document.getElementById('t-uploadBackupBtn').addEventListener('click', ()=>{
+    document.getElementById('t-uploadBackupFile').click();
+  });
+
+  document.getElementById('t-uploadBackupFile').addEventListener('change', (e)=>{
+    const file = e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt)=>{
+      try{
+        const data = JSON.parse(evt.target.result);
+        if(!data.players || !data.settings){ throw new Error('formato non valido'); }
+        players = data.players;
+        settings = data.settings;
+        syncSettingsInputs();
+        saveSettings();
+        saveState();
+        render();
+        alert('Backup caricato correttamente.');
+      }catch(err){
+        alert('Il file selezionato non è un backup valido di questo tabellone.');
+      }
+      e.target.value = '';
+    };
+    reader.readAsText(file);
+  });
+
+  loadState();
+})();
+</script>
+
+<script>
+// ===================== OTTIMIZZATORE MODULE =====================
+(function(){
+  const ROLE_LABELS = { P: '🧤 Portieri', D: '🛡️ Difensori', C: '🎯 Centrocampisti', A: '⚽ Attaccanti' };
+
+  function parsePlayers(raw){
+    const lines = raw.split('\n').map(l=>l.trim()).filter(l=>l.length>0);
+    const players = { P: [], D: [], C: [], A: [] };
+    const errors = [];
+    lines.forEach((line, idx)=>{
+      const parts = line.split(/[;,\t]/).map(s=>s.trim());
+      if(parts.length < 4){
+        errors.push(`Riga ${idx+1}: formato non valido ("${line}")`);
+        return;
+      }
+      const role = parts[0].toUpperCase();
+      const name = parts[1];
+      const price = parseFloat(parts[2].replace(',', '.'));
+      const fvm = parseFloat(parts[3].replace(',', '.'));
+      let trust = 1;
+      if(parts.length >= 5 && parts[4] !== ''){
+        const t = parseFloat(parts[4].replace(',', '.'));
+        if(!isNaN(t) && t > 0) trust = t;
+      }
+      if(!ROLE_LABELS[role]){
+        errors.push(`Riga ${idx+1}: ruolo "${parts[0]}" non riconosciuto (usa P/D/C/A)`);
+        return;
+      }
+      if(isNaN(price) || isNaN(fvm)){
+        errors.push(`Riga ${idx+1}: quotazione o FVM non numerici`);
+        return;
+      }
+      const value = fvm * trust;
+      players[role].push({ name, price: Math.max(0,Math.round(price)), fvm, trust, value });
+    });
+    return { players, errors };
+  }
+
+  function roleKnapsack(items, slots, budgetCap){
+    const NEG = -Infinity;
+    let dp = Array.from({length: slots+1}, ()=> new Array(budgetCap+1).fill(NEG));
+    let choice = Array.from({length: slots+1}, ()=> new Array(budgetCap+1).fill(null));
+    dp[0].fill(0);
+
+    for(const item of items){
+      for(let k = Math.min(slots, dp.length-1); k >= 1; k--){
+        for(let s = budgetCap; s >= item.price; s--){
+          const prev = dp[k-1][s-item.price];
+          if(prev !== NEG && prev + item.value > dp[k][s]){
+            dp[k][s] = prev + item.value;
+            choice[k][s] = { item, prevS: s-item.price };
+          }
+        }
+      }
+    }
+    for(let k=0;k<=slots;k++){
+      for(let s=1;s<=budgetCap;s++){
+        if(dp[k][s-1] > dp[k][s]){
+          dp[k][s] = dp[k][s-1];
+          choice[k][s] = choice[k][s-1] === undefined ? null : { carryFrom: s-1 };
+        }
+      }
+    }
+    return { dp, choice, slots };
+  }
+
+  function reconstructRole(dpObj, s){
+    const { dp, choice, slots } = dpObj;
+    let k = slots, spend = s;
+    const picked = [];
+    while(k > 0){
+      const c = choice[k][spend];
+      if(!c){ break; }
+      if(c.carryFrom !== undefined){
+        spend = c.carryFrom;
+        continue;
+      }
+      picked.push(c.item);
+      spend = c.prevS;
+      k -= 1;
+    }
+    return picked;
+  }
+
+  function optimizeWithTrace(playersByRole, slotsByRole, budget){
+    const roles = ['P','D','C','A'];
+    const roleDPs = {};
+    for(const r of roles){
+      const slots = slotsByRole[r];
+      roleDPs[r] = slots === 0 ? null : roleKnapsack(playersByRole[r], slots, budget);
+    }
+
+    const snapshots = [];
+    let combinedVal = new Array(budget+1).fill(0);
+    snapshots.push(combinedVal.slice());
+
+    for(const r of roles){
+      const slots = slotsByRole[r];
+      const roleValAt = (spend)=> slots === 0 ? 0 : (roleDPs[r] ? roleDPs[r].dp[slots][spend] : -Infinity);
+      const newVal = new Array(budget+1).fill(-Infinity);
+      for(let s=0;s<=budget;s++){
+        let best = -Infinity;
+        for(let a=0;a<=s;a++){
+          const rv = roleValAt(s-a);
+          if(rv === -Infinity) continue;
+          const total = combinedVal[a] + rv;
+          if(total > best) best = total;
+        }
+        newVal[s] = best;
+      }
+      combinedVal = newVal;
+      snapshots.push(combinedVal.slice());
+    }
+
+    let bestS = 0, bestVal = -Infinity;
+    for(let s=0;s<=budget;s++){
+      if(combinedVal[s] > bestVal){ bestVal = combinedVal[s]; bestS = s; }
+    }
+
+    let s = bestS;
+    const roleSpends = {};
+    for(let i = roles.length; i >= 1; i--){
+      const r = roles[i-1];
+      const prevSnap = snapshots[i-1];
+      const slots = slotsByRole[r];
+      const roleValAt = (spend)=> slots === 0 ? 0 : (roleDPs[r] ? roleDPs[r].dp[slots][spend] : -Infinity);
+      let bestA = 0, best = -Infinity;
+      for(let a=0;a<=s;a++){
+        const rv = roleValAt(s-a);
+        if(rv === -Infinity) continue;
+        const total = prevSnap[a] + rv;
+        if(total > best){ best = total; bestA = a; }
+      }
+      roleSpends[r] = s - bestA;
+      s = bestA;
+    }
+
+    const squad = {};
+    for(const r of roles){
+      squad[r] = slotsByRole[r] === 0 ? [] : reconstructRole(roleDPs[r], roleSpends[r]);
+    }
+
+    return { squad, roleSpends, totalSpend: bestS, totalValue: bestVal };
+  }
+
+  document.getElementById('o-exampleBtn').addEventListener('click', ()=>{
+    document.getElementById('o-playerData').value =
+`P;Meret;13;38;1
+P;Falcone;9;24;1
+P;Skorupski;7;19;0.9
+D;Bastoni;16;45;1
+D;Di Lorenzo;14;40;1
+D;Bremer;13;36;0.85
+D;Dimarco;15;44;1.1
+D;Calafiori;12;33;1
+D;Gosens;8;22;1
+D;Zappa;5;13;1
+D;Bellanova;6;16;1
+C;Barella;22;92;1
+C;McTominay;24;98;1.05
+C;Zaccagni;20;80;1
+C;Pellegrini;16;58;0.9
+C;Fabbian;10;28;1
+C;Ricci;9;24;1
+C;Sucic;12;34;1.2
+C;Ndoye;14;40;1
+A;Lautaro;28;155;1
+A;Retegui;25;140;1
+A;Kean;24;130;0.9
+A;Thuram;20;110;1
+A;Dybala;18;95;0.85
+A;Orsolini;16;80;1`;
+  });
+
+  document.getElementById('o-calcBtn').addEventListener('click', ()=>{
+    const errEl = document.getElementById('o-errMsg');
+    const statusEl = document.getElementById('o-statusMsg');
+    const resultsEl = document.getElementById('o-results');
+    errEl.textContent = '';
+    statusEl.textContent = '';
+    resultsEl.innerHTML = '';
+
+    const budget = parseInt(document.getElementById('o-budget').value, 10);
+    const slotsByRole = {
+      P: parseInt(document.getElementById('o-slotsP').value, 10),
+      D: parseInt(document.getElementById('o-slotsD').value, 10),
+      C: parseInt(document.getElementById('o-slotsC').value, 10),
+      A: parseInt(document.getElementById('o-slotsA').value, 10),
+    };
+
+    if(!budget || budget < 1){ errEl.textContent = 'Inserisci un budget valido.'; return; }
+
+    const raw = document.getElementById('o-playerData').value;
+    if(!raw.trim()){ errEl.textContent = 'Incolla prima i dati del listone.'; return; }
+
+    const { players, errors } = parsePlayers(raw);
+
+    for(const r of ['P','D','C','A']){
+      if(players[r].length < slotsByRole[r]){
+        errEl.textContent = (errEl.textContent ? errEl.textContent+'\n' : '') +
+          `Servono almeno ${slotsByRole[r]} giocatori di ruolo ${ROLE_LABELS[r]}, ne hai inseriti ${players[r].length}.`;
+      }
+    }
+    if(errEl.textContent) return;
+
+    statusEl.textContent = 'Calcolo in corso...';
+    setTimeout(()=>{
+      try{
+        const result = optimizeWithTrace(players, slotsByRole, budget);
+        renderResults(result, budget, errors);
+        statusEl.textContent = '';
+      }catch(e){
+        errEl.textContent = 'Errore nel calcolo: ' + e.message;
+        statusEl.textContent = '';
+      }
+    }, 30);
+  });
+
+  function renderResults(result, budget, parseWarnings){
+    const resultsEl = document.getElementById('o-results');
+    resultsEl.innerHTML = '';
+
+    if(parseWarnings.length){
+      const warn = document.createElement('div');
+      warn.className = 'err';
+      warn.style.marginBottom = '12px';
+      warn.textContent = 'Righe ignorate:\n' + parseWarnings.join('\n');
+      resultsEl.appendChild(warn);
+    }
+
+    const scoreboard = document.createElement('div');
+    scoreboard.className = 'scoreboard';
+    scoreboard.innerHTML = `
+      <div class="score-cell">
+        <div class="score-label">Spesa totale</div>
+        <div class="score-num gold">${result.totalSpend}</div>
+      </div>
+      <div class="score-cell">
+        <div class="score-label">💰 Rimasti</div>
+        <div class="score-num">${budget - result.totalSpend}</div>
+      </div>
+      <div class="score-cell">
+        <div class="score-label">Valore atteso (FVM)</div>
+        <div class="score-num">${result.totalValue.toFixed(0)}</div>
+      </div>
+    `;
+    resultsEl.appendChild(scoreboard);
+
+    ['P','D','C','A'].forEach(r=>{
+      const list = result.squad[r];
+      if(!list || list.length===0) return;
+      const sorted = [...list].sort((a,b)=> b.fvm - a.fvm);
+      const group = document.createElement('div');
+      group.className = 'roster-group';
+      const rows = sorted.map(p=>{
+        const trustTag = (p.trust && p.trust !== 1)
+          ? `<span class="fvm" style="color:${p.trust>1?'var(--gold)':'var(--alert)'}">×${p.trust}</span>`
+          : '';
+        return `
+        <div class="player-row">
+          <span class="player-name">${escapeHtml(p.name)}</span>
+          <span class="player-meta">
+            <span class="price">${p.price} cr</span>
+            <span class="fvm">FVM ${p.fvm}</span>
+            ${trustTag}
+          </span>
+        </div>
+      `;}).join('');
+      group.innerHTML = `<h3>${ROLE_LABELS[r]} (${list.length})</h3>${rows}`;
+      resultsEl.appendChild(group);
+    });
+  }
+})();
+</script>
+
+<script>
+// ===================== LISTA NOMI MODULE =====================
+(function(){
+  const ROLE_LABELS = { P: 'Portieri', D: 'Difensori', C: 'Centrocampisti', A: 'Attaccanti' };
+  const ROLE_SLOTS = { P: 3, D: 8, C: 8, A: 6 };
+  const STORAGE_KEY = 'lista-nomi-players';
+
+  const SEED_PLAYERS = [
+    {ruolo:'P', nome:'Okoye', squadra:'Udinese', status:'Confermato', note:''},
+    {ruolo:'P', nome:'Bijlow', squadra:'Genoa', status:'Confermato', note:''},
+    {ruolo:'P', nome:'Falcone', squadra:'Lecce', status:'Confermato', note:''},
+    {ruolo:'P', nome:'Thiam', squadra:'Monza', status:'Confermato', note:''},
+    {ruolo:'P', nome:'Suzuki', squadra:'Parma', status:'Confermato', note:''},
+
+    {ruolo:'D', nome:'Cacciamani', squadra:'Torino', status:'Confermato', note:''},
+    {ruolo:'D', nome:'Kolasinac', squadra:'Atalanta', status:'Confermato', note:''},
+    {ruolo:'D', nome:'Bracaglia', squadra:'Frosinone', status:'Confermato', note:''},
+    {ruolo:'D', nome:'Marusic', squadra:'Lazio', status:'Confermato', note:''},
+    {ruolo:'D', nome:'Doekhi', squadra:'Lazio', status:'Confermato', note:''},
+    {ruolo:'D', nome:'Wesley', squadra:'Roma', status:'Confermato', note:''},
+    {ruolo:'D', nome:'Ostigard', squadra:'Genoa', status:'Confermato', note:''},
+    {ruolo:'D', nome:'Scalvini', squadra:'Atalanta', status:'Confermato', note:''},
+    {ruolo:'D', nome:'Hermoso', squadra:'Roma', status:'Confermato', note:''},
+    {ruolo:'D', nome:'Kempf', squadra:'Como', status:'Confermato', note:''},
+
+    {ruolo:'C', nome:'Nico Paz', squadra:'Como', status:'Confermato', note:''},
+    {ruolo:'C', nome:'Vlasic', squadra:'Torino', status:'Confermato', note:''},
+    {ruolo:'C', nome:'Liberali', squadra:'Como', status:'Confermato', note:''},
+    {ruolo:'C', nome:'Gudmundsson', squadra:'Fiorentina', status:'Confermato', note:''},
+    {ruolo:'C', nome:'Taylor', squadra:'Lazio', status:'Confermato', note:''},
+    {ruolo:'C', nome:'Thorstvedt', squadra:'Sassuolo', status:'Confermato', note:''},
+    {ruolo:'C', nome:'Diouf', squadra:'Inter', status:'Confermato', note:''},
+    {ruolo:'C', nome:'Atta', squadra:'Udinese', status:'Confermato', note:''},
+    {ruolo:'C', nome:'McTominay', squadra:'Napoli', status:'Alternativa', note:'Investimento pesante - non scelto'},
+    {ruolo:'C', nome:'Orsolini', squadra:'Bologna', status:'Alternativa', note:'Non scelto'},
+    {ruolo:'C', nome:'Chukwueze', squadra:'Milan', status:'Alternativa', note:'Non scelto'},
+    {ruolo:'C', nome:'Unal Gomez', squadra:'Udinese', status:'Alternativa', note:'Non scelto'},
+    {ruolo:'C', nome:'Oulai', squadra:'Fiorentina', status:'Alternativa', note:'Non scelto'},
+
+    {ruolo:'A', nome:'Boga', squadra:'Juventus', status:'Confermato', note:''},
+    {ruolo:'A', nome:'Pellegrino', squadra:'Parma', status:'Confermato', note:''},
+    {ruolo:'A', nome:'Noslin', squadra:'Lazio', status:'Confermato', note:'Vedi nota Lazio attacco'},
+    {ruolo:'A', nome:'Camarda', squadra:'Milan', status:'Confermato', note:'Spazio ridotto dopo arrivo Goncalo Ramos titolare'},
+    {ruolo:'A', nome:'Hojlund', squadra:'Napoli', status:'Confermato', note:''},
+    {ruolo:'A', nome:'Adams', squadra:'Torino', status:'Confermato', note:''},
+    {ruolo:'A', nome:'Malen', squadra:'Roma', status:'Confermato', note:''},
+    {ruolo:'A', nome:'Ratkov', squadra:'Lazio', status:'Confermato', note:'Titolarita in bilico - vedi nota Lazio attacco'},
+    {ruolo:'A', nome:'Laurienté', squadra:'Sassuolo', status:'Confermato', note:''},
+    {ruolo:'A', nome:'Douvikas', squadra:'Como', status:'Confermato', note:'Vedi nota Como attacco'},
+    {ruolo:'A', nome:'Keinan Davis', squadra:'Udinese', status:'Confermato', note:''},
+  ];
+
+  let players = [];
+
+  async function loadState(){
+    try{
+      const res = await window.storage.get(STORAGE_KEY);
+      if(res && res.value){ players = JSON.parse(res.value); }
+      else { players = SEED_PLAYERS.slice(); await saveState(); }
+    }catch(e){ players = SEED_PLAYERS.slice(); }
+    render();
+  }
+
+  async function saveState(){
+    const statusEl = document.getElementById('ln-saveStatus');
+    try{
+      await window.storage.set(STORAGE_KEY, JSON.stringify(players));
+      if(statusEl){ statusEl.textContent = 'Salvato'; setTimeout(()=>{ statusEl.textContent=''; }, 1200); }
+    }catch(e){
+      if(statusEl) statusEl.textContent = 'Errore salvataggio';
+    }
+  }
+
+  function escapeHtml(str){
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  function render(){
+    // summary scoreboard
+    const summary = document.getElementById('ln-summary');
+    summary.innerHTML = '';
+    Object.keys(ROLE_LABELS).forEach(role=>{
+      const confirmed = players.filter(p=>p.ruolo===role && p.status==='Confermato').length;
+      const slots = ROLE_SLOTS[role];
+      const cell = document.createElement('div');
+      cell.className = 'score-cell';
+      const over = confirmed >= slots;
+      cell.innerHTML = `
+        <div class="score-label">${ROLE_LABELS[role]}</div>
+        <div class="score-num ${over ? '' : 'over'}">${confirmed}/${slots}</div>
+      `;
+      summary.appendChild(cell);
+    });
+
+    // list grouped by role
+    const listEl = document.getElementById('ln-list');
+    listEl.innerHTML = '';
+    Object.keys(ROLE_LABELS).forEach(role=>{
+      const group = players.filter(p=>p.ruolo===role);
+      if(group.length===0) return;
+      const groupDiv = document.createElement('div');
+      groupDiv.className = 'roster-group';
+      const order = { 'Confermato':0, 'Da valutare':1, 'Alternativa':2 };
+      const sorted = [...group].sort((a,b)=> (order[a.status]??3) - (order[b.status]??3));
+      const rows = sorted.map(p=>{
+        const statusIcon = p.status==='Confermato' ? '✅' : (p.status==='Da valutare' ? '🟡' : '⚪');
+        const noteHtml = p.note ? `<div style="font-size:11.5px; color:var(--muted); margin-top:2px;">${escapeHtml(p.note)}</div>` : '';
+        return `
+        <div class="player-row" style="flex-direction:column; align-items:stretch;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span class="player-name">${statusIcon} ${escapeHtml(p.nome)} <span style="color:var(--muted); font-weight:400; font-size:12px;">(${escapeHtml(p.squadra)})</span></span>
+            <button class="del-btn" data-id="${p.id}">✕</button>
+          </div>
+          ${noteHtml}
+        </div>
+      `;}).join('');
+      groupDiv.innerHTML = `<h3>${ROLE_LABELS[role]} (${group.length})</h3>${rows}`;
+      listEl.appendChild(groupDiv);
+    });
+    if(players.length===0){
+      listEl.innerHTML = '<div class="empty">Nessun giocatore in lista. Aggiungine uno qui sopra.</div>';
+    }
+
+    listEl.querySelectorAll('.del-btn').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        players = players.filter(p=>p.id !== btn.dataset.id);
+        saveState();
+        render();
+      });
+    });
+  }
+
+  document.getElementById('ln-addBtn').addEventListener('click', ()=>{
+    const ruolo = document.getElementById('ln-ruolo').value;
+    const nomeEl = document.getElementById('ln-nome');
+    const squadraEl = document.getElementById('ln-squadra');
+    const status = document.getElementById('ln-status').value;
+    const noteEl = document.getElementById('ln-note');
+    const errEl = document.getElementById('ln-errMsg');
+    errEl.textContent = '';
+
+    const nome = nomeEl.value.trim();
+    const squadra = squadraEl.value.trim();
+    if(!nome){ errEl.textContent = 'Inserisci il nome del giocatore.'; return; }
+
+    players.push({
+      id: Date.now().toString(36)+Math.random().toString(36).slice(2,6),
+      ruolo, nome, squadra, status, note: noteEl.value.trim()
+    });
+    nomeEl.value = ''; squadraEl.value = ''; noteEl.value = '';
+    nomeEl.focus();
+    saveState();
+    render();
+  });
+
+  document.getElementById('ln-resetBtn').addEventListener('click', ()=>{
+    if(confirm('Azzerare tutta la lista nomi? Questa azione non si può annullare.')){
+      players = [];
+      saveState();
+      render();
+    }
+  });
+
+  document.getElementById('ln-downloadBackup').addEventListener('click', ()=>{
+    const blob = new Blob([JSON.stringify({ players }, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const stamp = new Date().toISOString().slice(0,16).replace(/[:T]/g,'-');
+    a.href = url;
+    a.download = `lista-nomi-backup-${stamp}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  });
+
+  document.getElementById('ln-uploadBackupBtn').addEventListener('click', ()=>{
+    document.getElementById('ln-uploadBackupFile').click();
+  });
+
+  document.getElementById('ln-uploadBackupFile').addEventListener('change', (e)=>{
+    const file = e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt)=>{
+      try{
+        const data = JSON.parse(evt.target.result);
+        if(!data.players) throw new Error('formato non valido');
+        players = data.players;
+        saveState();
+        render();
+        alert('Backup caricato correttamente.');
+      }catch(err){
+        alert('Il file selezionato non è un backup valido di questa lista.');
+      }
+      e.target.value = '';
+    };
+    reader.readAsText(file);
+  });
+
+  loadState();
+})();
+
+</script>
+
+<script>
+// ===================== ABBINAMENTI MODULE (v2: 5 fasce, attacco/difesa, casa-trasferta, modificatore) =====================
+(function(){
+const TEAMS = ["Atalanta","Bologna","Cagliari","Como","Fiorentina","Frosinone","Genoa","Inter",
+  "Juventus","Lazio","Lecce","Milan","Monza","Napoli","Parma","Roma","Sassuolo","Torino","Udinese","Venezia"];
+
+const DEFAULT_OFFENSE = {
+  "Inter":19, "Atalanta":18, "Napoli":17, "Milan":16, "Juventus":15, "Roma":14, "Como":13,
+  "Bologna":12, "Genoa":12, "Lazio":11, "Udinese":10, "Torino":7, "Fiorentina":7, "Sassuolo":7,
+  "Cagliari":6, "Lecce":5, "Parma":4, "Venezia":3, "Monza":2, "Frosinone":1
+};
+const DEFAULT_DEFENSE = {
+  "Inter":20, "Napoli":19, "Roma":17, "Como":16, "Bologna":15, "Atalanta":14, "Juventus":14,
+  "Milan":13, "Genoa":13, "Lazio":12, "Udinese":10, "Torino":7, "Fiorentina":7, "Sassuolo":7,
+  "Cagliari":7, "Lecce":5, "Parma":4, "Venezia":3, "Monza":2, "Frosinone":1
+};
+
+const CALENDAR = [
+[["Atalanta","Sassuolo"],["Bologna","Lazio"],["Frosinone","Juventus"],["Genoa","Napoli"],["Inter","Monza"],["Parma","Cagliari"],["Roma","Fiorentina"],["Torino","Milan"],["Udinese","Como"],["Venezia","Lecce"]],
+[["Atalanta","Bologna"],["Cagliari","Inter"],["Fiorentina","Frosinone"],["Juventus","Parma"],["Lazio","Genoa"],["Lecce","Roma"],["Milan","Venezia"],["Monza","Udinese"],["Napoli","Como"],["Sassuolo","Torino"]],
+[["Bologna","Sassuolo"],["Cagliari","Lecce"],["Fiorentina","Torino"],["Frosinone","Venezia"],["Genoa","Como"],["Inter","Napoli"],["Juventus","Milan"],["Parma","Monza"],["Roma","Atalanta"],["Udinese","Lazio"]],
+[["Atalanta","Cagliari"],["Como","Parma"],["Genoa","Frosinone"],["Inter","Udinese"],["Lazio","Milan"],["Lecce","Monza"],["Napoli","Bologna"],["Sassuolo","Juventus"],["Torino","Roma"],["Venezia","Fiorentina"]],
+[["Bologna","Torino"],["Fiorentina","Napoli"],["Frosinone","Como"],["Juventus","Atalanta"],["Milan","Lecce"],["Monza","Sassuolo"],["Parma","Genoa"],["Roma","Inter"],["Udinese","Cagliari"],["Venezia","Lazio"]],
+[["Atalanta","Venezia"],["Cagliari","Juventus"],["Como","Roma"],["Genoa","Fiorentina"],["Inter","Parma"],["Lazio","Monza"],["Lecce","Bologna"],["Napoli","Frosinone"],["Sassuolo","Milan"],["Torino","Udinese"]],
+[["Bologna","Inter"],["Fiorentina","Como"],["Frosinone","Sassuolo"],["Juventus","Lazio"],["Milan","Atalanta"],["Monza","Cagliari"],["Parma","Torino"],["Roma","Genoa"],["Udinese","Lecce"],["Venezia","Napoli"]],
+[["Atalanta","Frosinone"],["Cagliari","Bologna"],["Como","Sassuolo"],["Genoa","Venezia"],["Inter","Fiorentina"],["Lazio","Parma"],["Lecce","Juventus"],["Napoli","Roma"],["Torino","Monza"],["Udinese","Milan"]],
+[["Fiorentina","Atalanta"],["Frosinone","Lecce"],["Genoa","Juventus"],["Milan","Bologna"],["Monza","Napoli"],["Parma","Udinese"],["Roma","Cagliari"],["Sassuolo","Lazio"],["Torino","Como"],["Venezia","Inter"]],
+[["Atalanta","Parma"],["Bologna","Monza"],["Como","Venezia"],["Frosinone","Torino"],["Juventus","Napoli"],["Lazio","Cagliari"],["Lecce","Genoa"],["Milan","Inter"],["Sassuolo","Fiorentina"],["Udinese","Roma"]],
+[["Cagliari","Frosinone"],["Fiorentina","Juventus"],["Genoa","Milan"],["Inter","Como"],["Monza","Atalanta"],["Napoli","Lazio"],["Parma","Bologna"],["Roma","Sassuolo"],["Torino","Lecce"],["Venezia","Udinese"]],
+[["Atalanta","Inter"],["Bologna","Udinese"],["Como","Cagliari"],["Juventus","Venezia"],["Lazio","Lecce"],["Milan","Frosinone"],["Monza","Fiorentina"],["Napoli","Torino"],["Parma","Roma"],["Sassuolo","Genoa"]],
+[["Cagliari","Milan"],["Como","Juventus"],["Frosinone","Parma"],["Inter","Genoa"],["Lecce","Atalanta"],["Roma","Monza"],["Sassuolo","Napoli"],["Torino","Lazio"],["Udinese","Fiorentina"],["Venezia","Bologna"]],
+[["Bologna","Roma"],["Fiorentina","Cagliari"],["Frosinone","Inter"],["Genoa","Torino"],["Juventus","Udinese"],["Lazio","Atalanta"],["Milan","Parma"],["Monza","Como"],["Napoli","Lecce"],["Venezia","Sassuolo"]],
+[["Atalanta","Genoa"],["Cagliari","Venezia"],["Como","Bologna"],["Inter","Torino"],["Juventus","Monza"],["Lazio","Roma"],["Lecce","Sassuolo"],["Napoli","Milan"],["Parma","Fiorentina"],["Udinese","Frosinone"]],
+[["Atalanta","Napoli"],["Fiorentina","Bologna"],["Frosinone","Lazio"],["Genoa","Udinese"],["Lecce","Inter"],["Milan","Como"],["Roma","Juventus"],["Sassuolo","Parma"],["Torino","Cagliari"],["Venezia","Monza"]],
+[["Bologna","Juventus"],["Cagliari","Genoa"],["Como","Lecce"],["Fiorentina","Lazio"],["Inter","Sassuolo"],["Monza","Milan"],["Parma","Napoli"],["Roma","Frosinone"],["Torino","Venezia"],["Udinese","Atalanta"]],
+[["Atalanta","Como"],["Frosinone","Bologna"],["Genoa","Monza"],["Juventus","Torino"],["Lazio","Inter"],["Lecce","Parma"],["Milan","Fiorentina"],["Napoli","Cagliari"],["Sassuolo","Udinese"],["Venezia","Roma"]],
+[["Bologna","Genoa"],["Cagliari","Sassuolo"],["Como","Lazio"],["Fiorentina","Lecce"],["Inter","Juventus"],["Monza","Frosinone"],["Parma","Venezia"],["Roma","Milan"],["Torino","Atalanta"],["Udinese","Napoli"]],
+[["Atalanta","Roma"],["Cagliari","Como"],["Juventus","Genoa"],["Lazio","Bologna"],["Lecce","Udinese"],["Milan","Torino"],["Napoli","Fiorentina"],["Parma","Inter"],["Sassuolo","Monza"],["Venezia","Frosinone"]],
+[["Bologna","Atalanta"],["Como","Napoli"],["Fiorentina","Sassuolo"],["Frosinone","Milan"],["Genoa","Parma"],["Inter","Venezia"],["Juventus","Cagliari"],["Lecce","Torino"],["Monza","Lazio"],["Roma","Udinese"]],
+[["Atalanta","Fiorentina"],["Cagliari","Parma"],["Genoa","Lecce"],["Lazio","Venezia"],["Milan","Juventus"],["Monza","Roma"],["Napoli","Inter"],["Sassuolo","Como"],["Torino","Frosinone"],["Udinese","Bologna"]],
+[["Atalanta","Lazio"],["Bologna","Milan"],["Como","Monza"],["Fiorentina","Udinese"],["Inter","Cagliari"],["Juventus","Sassuolo"],["Lecce","Napoli"],["Parma","Frosinone"],["Roma","Torino"],["Venezia","Genoa"]],
+[["Bologna","Como"],["Cagliari","Lazio"],["Frosinone","Fiorentina"],["Genoa","Atalanta"],["Inter","Milan"],["Monza","Lecce"],["Napoli","Juventus"],["Roma","Parma"],["Torino","Sassuolo"],["Udinese","Venezia"]],
+[["Atalanta","Monza"],["Como","Torino"],["Fiorentina","Inter"],["Juventus","Bologna"],["Lazio","Napoli"],["Lecce","Frosinone"],["Milan","Genoa"],["Sassuolo","Roma"],["Udinese","Parma"],["Venezia","Cagliari"]],
+[["Bologna","Lecce"],["Cagliari","Udinese"],["Como","Milan"],["Frosinone","Napoli"],["Genoa","Lazio"],["Inter","Atalanta"],["Monza","Juventus"],["Parma","Sassuolo"],["Roma","Venezia"],["Torino","Fiorentina"]],
+[["Atalanta","Torino"],["Fiorentina","Venezia"],["Juventus","Roma"],["Lazio","Frosinone"],["Lecce","Como"],["Milan","Cagliari"],["Monza","Genoa"],["Napoli","Parma"],["Sassuolo","Bologna"],["Udinese","Inter"]],
+[["Bologna","Napoli"],["Cagliari","Fiorentina"],["Como","Udinese"],["Frosinone","Monza"],["Genoa","Roma"],["Lazio","Juventus"],["Milan","Sassuolo"],["Parma","Lecce"],["Torino","Inter"],["Venezia","Atalanta"]],
+[["Atalanta","Milan"],["Fiorentina","Genoa"],["Inter","Frosinone"],["Juventus","Como"],["Monza","Bologna"],["Napoli","Venezia"],["Parma","Lazio"],["Roma","Lecce"],["Sassuolo","Cagliari"],["Udinese","Torino"]],
+[["Cagliari","Napoli"],["Como","Fiorentina"],["Frosinone","Udinese"],["Genoa","Inter"],["Lecce","Lazio"],["Milan","Monza"],["Roma","Bologna"],["Sassuolo","Atalanta"],["Torino","Juventus"],["Venezia","Parma"]],
+[["Bologna","Venezia"],["Cagliari","Atalanta"],["Fiorentina","Milan"],["Frosinone","Genoa"],["Inter","Roma"],["Juventus","Lecce"],["Lazio","Torino"],["Napoli","Sassuolo"],["Parma","Como"],["Udinese","Monza"]],
+[["Atalanta","Udinese"],["Bologna","Cagliari"],["Como","Frosinone"],["Fiorentina","Parma"],["Milan","Napoli"],["Monza","Inter"],["Roma","Lazio"],["Sassuolo","Lecce"],["Torino","Genoa"],["Venezia","Juventus"]],
+[["Cagliari","Monza"],["Frosinone","Roma"],["Genoa","Sassuolo"],["Inter","Bologna"],["Juventus","Fiorentina"],["Lazio","Como"],["Lecce","Milan"],["Napoli","Udinese"],["Parma","Atalanta"],["Venezia","Torino"]],
+[["Atalanta","Juventus"],["Bologna","Fiorentina"],["Como","Inter"],["Lecce","Cagliari"],["Milan","Lazio"],["Monza","Venezia"],["Roma","Napoli"],["Sassuolo","Frosinone"],["Torino","Parma"],["Udinese","Genoa"]],
+[["Fiorentina","Roma"],["Frosinone","Atalanta"],["Genoa","Cagliari"],["Inter","Lecce"],["Lazio","Sassuolo"],["Napoli","Monza"],["Parma","Milan"],["Torino","Bologna"],["Udinese","Juventus"],["Venezia","Como"]],
+[["Bologna","Frosinone"],["Cagliari","Torino"],["Como","Atalanta"],["Juventus","Inter"],["Lazio","Udinese"],["Lecce","Fiorentina"],["Milan","Roma"],["Monza","Parma"],["Napoli","Genoa"],["Sassuolo","Venezia"]],
+[["Atalanta","Lecce"],["Fiorentina","Monza"],["Frosinone","Cagliari"],["Genoa","Bologna"],["Inter","Lazio"],["Parma","Juventus"],["Roma","Como"],["Torino","Napoli"],["Udinese","Sassuolo"],["Venezia","Milan"]],
+[["Bologna","Parma"],["Cagliari","Roma"],["Como","Genoa"],["Juventus","Frosinone"],["Lazio","Fiorentina"],["Lecce","Venezia"],["Milan","Udinese"],["Monza","Torino"],["Napoli","Atalanta"],["Sassuolo","Inter"]],
+];
+
+let currentOffense = { ...DEFAULT_OFFENSE };
+let currentDefense = { ...DEFAULT_DEFENSE };
+const ROLE_LABELS = { P: 'Portieri', D: 'Difensori', C: 'Centrocampisti', A: 'Attaccanti' };
+const TIER_ICONS = { "bassa":"🟢", "medio-bassa":"🟩", "media":"🟡", "medio-alta":"🟠", "alta":"🔴" };
+const TIER_WEIGHTS = { "bassa": 0, "medio-bassa": 0.15, "media": 0.35, "medio-alta": 0.65, "alta": 1.0 };
+
+function buildRankGrid(gridId, dataObj){
+  const grid = document.getElementById(gridId);
+  grid.innerHTML = '';
+  const sorted = [...TEAMS].sort((a,b)=> dataObj[b]-dataObj[a]);
+  sorted.forEach(team=>{
+    const row = document.createElement('div');
+    row.className = 'rank-row';
+    row.innerHTML = `<span class="team-name">${team}</span><input type="number" min="1" max="20" value="${dataObj[team]}" data-team="${team}">`;
+    grid.appendChild(row);
+  });
+  grid.querySelectorAll('input').forEach(inp=>{
+    inp.addEventListener('input', ()=>{ dataObj[inp.dataset.team] = parseInt(inp.value, 10) || 1; safeRecalc(); });
+  });
+}
+
+document.getElementById('ab-showOffense').addEventListener('click', ()=>{
+  document.getElementById('ab-offenseGrid').style.display = '';
+  document.getElementById('ab-defenseGrid').style.display = 'none';
+  document.getElementById('ab-showOffense').classList.add('active');
+  document.getElementById('ab-showDefense').classList.remove('active');
+});
+document.getElementById('ab-showDefense').addEventListener('click', ()=>{
+  document.getElementById('ab-offenseGrid').style.display = 'none';
+  document.getElementById('ab-defenseGrid').style.display = '';
+  document.getElementById('ab-showDefense').classList.add('active');
+  document.getElementById('ab-showOffense').classList.remove('active');
+});
+
+const ROLE_HINTS = {
+  P: "Portieri: conta la forza OFFENSIVA dell'avversario (attacco forte = giornata difficile per loro).",
+  D: "Difensori: stesso discorso dei portieri, conta la forza OFFENSIVA dell'avversario.",
+  C: "Centrocampisti: conta la forza DIFENSIVA dell'avversario (difesa forte = giornata difficile per fare bonus).",
+  A: "Attaccanti: stesso discorso dei centrocampisti, conta la forza DIFENSIVA dell'avversario."
+};
+
+function updateRoleHint(){
+  const role = document.getElementById('ab-ruolo').value;
+  document.getElementById('ab-roleHint').textContent = ROLE_HINTS[role];
+  const usesOffense = (role === 'P' || role === 'D');
+  if(usesOffense) document.getElementById('ab-showOffense').click();
+  else document.getElementById('ab-showDefense').click();
+}
+
+function buildTeamSelects(){
+  const n = parseInt(document.getElementById('ab-numTeams').value, 10);
+  const container = document.getElementById('ab-teamSelects');
+  const prevValues = Array.from(container.querySelectorAll('select')).map(s=>s.value);
+  container.innerHTML = '';
+  const defaults = ["Napoli","Como","Bologna"];
+  for(let i=0;i<n;i++){
+    const field = document.createElement('div');
+    field.className = 'field';
+    const label = document.createElement('label');
+    label.textContent = `Squadra ${String.fromCharCode(65+i)}`;
+    const select = document.createElement('select');
+    select.id = `ab-team${i}`;
+    TEAMS.forEach(t=>{
+      const opt = document.createElement('option');
+      opt.value = t; opt.textContent = t;
+      select.appendChild(opt);
+    });
+    select.value = prevValues[i] || defaults[i] || TEAMS[i];
+    select.addEventListener('change', safeRecalc);
+    field.appendChild(label);
+    field.appendChild(select);
+    container.appendChild(field);
+  }
+}
+
+document.getElementById('ab-numTeams').addEventListener('change', buildTeamSelects);
+document.getElementById('ab-ruolo').addEventListener('change', ()=>{ updateRoleHint(); safeRecalc(); });
+['ab-th1','ab-th2','ab-th3','ab-th4','ab-qualityWeight','ab-homeAwayPoints','ab-modAmplifier'].forEach(id=>{
+  document.getElementById(id).addEventListener('input', safeRecalc);
+});
+document.getElementById('ab-applyHomeAway').addEventListener('change', safeRecalc);
+document.getElementById('ab-applyModificatore').addEventListener('change', safeRecalc);
+
+function safeRecalc(){
+  try{ runCalculation(); }
+  catch(err){ console.error('Errore nel ricalcolo:', err); }
+}
+
+function getThresholds(){
+  const t1 = parseInt(document.getElementById('ab-th1').value, 10);
+  const t2 = parseInt(document.getElementById('ab-th2').value, 10);
+  const t3 = parseInt(document.getElementById('ab-th3').value, 10);
+  const t4 = parseInt(document.getElementById('ab-th4').value, 10);
+  return [t1, t2, t3, t4];
+}
+
+function tierFor(rank, thresholds){
+  const [t1,t2,t3,t4] = thresholds;
+  if(rank <= t1) return 'bassa';
+  if(rank <= t2) return 'medio-bassa';
+  if(rank <= t3) return 'media';
+  if(rank <= t4) return 'medio-alta';
+  return 'alta';
+}
+
+function difficultyFor(opponent, role, home){
+  const usesOffense = (role === 'P' || role === 'D');
+  let rank = usesOffense ? currentOffense[opponent] : currentDefense[opponent];
+  const applyHomeAway = document.getElementById('ab-applyHomeAway').checked;
+  if(applyHomeAway){
+    const points = parseFloat(document.getElementById('ab-homeAwayPoints').value) || 0;
+    rank = rank + (home ? -points : points);
+  }
+  return tierFor(rank, getThresholds());
+}
+
+function getSchedule(team, role){
+  const schedule = [];
+  CALENDAR.forEach((round, idx)=>{
+    const match = round.find(m => m[0]===team || m[1]===team);
+    if(match){
+      const opponent = match[0]===team ? match[1] : match[0];
+      const home = match[0]===team;
+      schedule.push({ giornata: idx+1, opponent, home, tier: difficultyFor(opponent, role, home) });
+    }
+  });
+  return schedule;
+}
+
+function ownQualityRank(team, role){
+  const usesOwnDefense = (role === 'P' || role === 'D');
+  return usesOwnDefense ? currentDefense[team] : currentOffense[team];
+}
+
+function computeRawIndice(teams, role){
+  const schedules = teams.map(t => getSchedule(t, role));
+  const totalWeeks = schedules[0].length;
+  const usesModificatore = (role === 'P' || role === 'D') && document.getElementById('ab-applyModificatore').checked;
+  const amplifier = usesModificatore ? (parseFloat(document.getElementById('ab-modAmplifier').value) || 1) : 1;
+  let penaltySum = 0;
+  for(let i=0;i<totalWeeks;i++){
+    const tiers = schedules.map(s => s[i].tier);
+    const allSame = tiers.every(t => t === tiers[0]);
+    if(allSame){ penaltySum += TIER_WEIGHTS[tiers[0]] * amplifier; }
+  }
+  const penalty = (penaltySum / totalWeeks) * 100;
+  return Math.max(0, Math.round(100 - penalty));
+}
+
+function computeFinalIndice(teams, role){
+  const raw = computeRawIndice(teams, role);
+  const w = Math.max(0, Math.min(100, parseInt(document.getElementById('ab-qualityWeight').value, 10) || 0)) / 100;
+  const avgOwnRank = teams.reduce((s,t)=> s + ownQualityRank(t, role), 0) / teams.length;
+  const qualityFactor = avgOwnRank / 20;
+  const blended = raw * (1 - w) + raw * qualityFactor * w;
+  return Math.max(0, Math.round(blended));
+}
+
+function combinations(arr, k){
+  const results = [];
+  function helper(start, combo){
+    if(combo.length === k){ results.push([...combo]); return; }
+    for(let i=start;i<arr.length;i++){ combo.push(arr[i]); helper(i+1, combo); combo.pop(); }
+  }
+  helper(0, []);
+  return results;
+}
+
+function runCalculation(){
+  const n = parseInt(document.getElementById('ab-numTeams').value, 10);
+  const role = document.getElementById('ab-ruolo').value;
+  const teams = [];
+  for(let i=0;i<n;i++){
+    const el = document.getElementById(`ab-team${i}`);
+    if(!el) return;
+    teams.push(el.value);
+  }
+  if(new Set(teams).size !== teams.length){
+    document.getElementById('ab-results').innerHTML = '<div class="panel">Scegli squadre tutte diverse tra loro.</div>';
+    return;
+  }
+
+  const schedules = teams.map(t => getSchedule(t, role));
+  const totalWeeks = schedules[0].length;
+
+  let coverage = 0;
+  let coverageHome = 0, coverageAway = 0;
+  const rows = [];
+  for(let i=0;i<totalWeeks;i++){
+    const weekEntries = schedules.map(s => s[i]);
+    const tiers = weekEntries.map(e => e.tier);
+    const bad = tiers.every(t => t === 'alta');
+    const hasCoverage = tiers.some(t => t === 'bassa' || t === 'medio-bassa');
+    if(hasCoverage) coverage++;
+    weekEntries.forEach(e => {
+      if(e.tier === 'bassa' || e.tier === 'medio-bassa'){
+        if(e.home) coverageHome++; else coverageAway++;
+      }
+    });
+    rows.push({ giornata: i+1, entries: weekEntries, bad });
+  }
+
+  const rawIndice = computeRawIndice(teams, role);
+  const indice = computeFinalIndice(teams, role);
+
+  renderResults(teams, role, indice, rawIndice, coverage, totalWeeks, rows, coverageHome, coverageAway);
+  renderSuggestions(role, n, teams);
+}
+
+function renderResults(teams, role, indice, rawIndice, coverage, totalWeeks, rows, coverageHome, coverageAway){
+  const el = document.getElementById('ab-results');
+  el.innerHTML = '';
+
+  const scoreboard = document.createElement('div');
+  scoreboard.className = 'scoreboard';
+  const indiceClass = indice >= 80 ? '' : (indice >= 60 ? 'mid' : 'bad');
+  const coverageMatches = coverageHome + coverageAway;
+  scoreboard.innerHTML = `
+    <div class="score-cell">
+      <div class="score-label">Indice finale</div>
+      <div class="score-num ${indiceClass}">${indice}/100</div>
+    </div>
+    <div class="score-cell">
+      <div class="score-label">Indice grezzo (solo calendario)</div>
+      <div class="score-num" style="color:var(--muted); font-size:22px;">${rawIndice}/100</div>
+    </div>
+    <div class="score-cell">
+      <div class="score-label">Copertura (almeno 1 in fascia bassa o medio-bassa)</div>
+      <div class="score-num">${coverage}/${totalWeeks}</div>
+    </div>
+    <div class="score-cell">
+      <div class="score-label">Partite di copertura: Casa / Trasferta</div>
+      <div class="score-num" style="font-size:20px;">${coverageHome} 🏠 / ${coverageAway} ✈️</div>
+      <div style="font-size:10.5px; color:var(--muted); margin-top:2px;">solo le ${coverageMatches} partite in fascia bassa/medio-bassa, sommate su tutte le squadre</div>
+    </div>
+  `;
+  el.appendChild(scoreboard);
+
+  const roleLabel = ROLE_LABELS[role];
+  const panel = document.createElement('div');
+  panel.className = 'panel';
+  panel.innerHTML = `<h2>📅 ${roleLabel}: ${teams.join(' vs ')} — giornata per giornata</h2>`;
+  const scrollDiv = document.createElement('div');
+  scrollDiv.className = 'scroll-table';
+  const table = document.createElement('table');
+  table.innerHTML = `
+    <thead><tr><th>Giornata</th>${teams.map(t=>`<th>${t}</th>`).join('')}</tr></thead>
+    <tbody>
+      ${rows.map(r=>`
+        <tr class="${r.bad ? 'row-bad' : ''}">
+          <td class="giornata">${r.giornata}</td>
+          ${r.entries.map(e=>`<td>vs ${e.opponent} (${e.home?'C':'T'}) <span class="tag ${e.tier}">${TIER_ICONS[e.tier]} ${e.tier}</span></td>`).join('')}
+        </tr>
+      `).join('')}
+    </tbody>
+  `;
+  scrollDiv.appendChild(table);
+  panel.appendChild(scrollDiv);
+  el.appendChild(panel);
+}
+
+function renderSuggestions(role, n, currentTeams){
+  const combos = combinations(TEAMS, n);
+  const scored = combos.map(teams => ({ teams, indice: computeFinalIndice(teams, role) }));
+  scored.sort((a,b) => b.indice - a.indice);
+  const top5 = scored.slice(0, 5);
+
+  const roleLabel = ROLE_LABELS[role];
+  const groupLabel = n === 2 ? 'coppie' : 'terzetti';
+  const panel = document.createElement('div');
+  panel.className = 'panel';
+  panel.innerHTML = `<h2>🏆 Migliori ${groupLabel} suggerit${n===2?'e':'i'} — ${roleLabel}</h2>`;
+  const list = document.createElement('div');
+  top5.forEach((s, idx)=>{
+    const isCurrent = s.teams.length === currentTeams.length && s.teams.every(t => currentTeams.includes(t));
+    const row = document.createElement('div');
+    row.className = 'player-row';
+    row.innerHTML = `
+      <span class="player-name">${idx+1}. ${s.teams.join(' + ')}${isCurrent ? ' <span style="color:var(--pitch); font-weight:600;">(selezionata)</span>' : ''}</span>
+      <span class="tag ${s.indice>=80?'bassa':(s.indice>=60?'media':'alta')}">${s.indice}/100</span>
+    `;
+    list.appendChild(row);
+  });
+  panel.appendChild(list);
+  panel.appendChild(Object.assign(document.createElement('div'), {
+    className: 'hint',
+    textContent: `Calcolato su tutte le ${combos.length} combinazioni possibili di ${n} squadre su 20, con ranking, fasce e soglie attuali.`
+  }));
+  document.getElementById('ab-results').appendChild(panel);
+}
+
+buildRankGrid('ab-offenseGrid', currentOffense);
+buildRankGrid('ab-defenseGrid', currentDefense);
+updateRoleHint();
+buildTeamSelects();
+safeRecalc();
+})();
+</script>
+<script>
+// PWA: registra il service worker solo se supportato e non aperto come file locale
+if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('service-worker.js').catch(err => {
+      console.log('Service worker non registrato:', err);
+    });
+  });
+}
+</script>
+</body>
+</html>
