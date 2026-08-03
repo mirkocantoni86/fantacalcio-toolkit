@@ -1025,6 +1025,13 @@ A;Orsolini;16;80;1`;
       if(res && res.value){ players = JSON.parse(res.value); }
       else { players = SEED_PLAYERS.slice(); await saveState(); }
     }catch(e){ players = SEED_PLAYERS.slice(); }
+    // Backfill: i giocatori seed (e vecchi dati salvati prima di questo fix) non hanno
+    // un id, quindi il pulsante ✕ non riusciva mai a trovarli per rimuoverli.
+    let needsSave = false;
+    players.forEach(p=>{
+      if(!p.id){ p.id = Date.now().toString(36)+Math.random().toString(36).slice(2,6); needsSave = true; }
+    });
+    if(needsSave) await saveState();
     render();
   }
 
