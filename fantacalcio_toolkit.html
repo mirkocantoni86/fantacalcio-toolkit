@@ -731,45 +731,39 @@ if (!window.storage) {
   function roleKnapsack(items, slots, budgetCap){
     const NEG = -Infinity;
     let dp = Array.from({length: slots+1}, ()=> new Array(budgetCap+1).fill(NEG));
-    let choice = Array.from({length: slots+1}, ()=> new Array(budgetCap+1).fill(null));
     dp[0].fill(0);
+    const history = [dp.map(row => row.slice())];
 
     for(const item of items){
-      for(let k = Math.min(slots, dp.length-1); k >= 1; k--){
-        for(let s = budgetCap; s >= item.price; s--){
+      const newDp = dp.map(row => row.slice());
+      for(let k = 1; k <= slots; k++){
+        for(let s = item.price; s <= budgetCap; s++){
           const prev = dp[k-1][s-item.price];
-          if(prev !== NEG && prev + item.value > dp[k][s]){
-            dp[k][s] = prev + item.value;
-            choice[k][s] = { item, prevS: s-item.price };
+          if(prev !== NEG){
+            const candidate = prev + item.value;
+            if(candidate > newDp[k][s]) newDp[k][s] = candidate;
           }
         }
       }
+      dp = newDp;
+      history.push(dp.map(row => row.slice()));
     }
-    for(let k=0;k<=slots;k++){
-      for(let s=1;s<=budgetCap;s++){
-        if(dp[k][s-1] > dp[k][s]){
-          dp[k][s] = dp[k][s-1];
-          choice[k][s] = choice[k][s-1] === undefined ? null : { carryFrom: s-1 };
-        }
-      }
-    }
-    return { dp, choice, slots };
+
+    return { dp, history, items, slots };
   }
 
   function reconstructRole(dpObj, s){
-    const { dp, choice, slots } = dpObj;
+    const { history, items, slots } = dpObj;
     let k = slots, spend = s;
     const picked = [];
-    while(k > 0){
-      const c = choice[k][spend];
-      if(!c){ break; }
-      if(c.carryFrom !== undefined){
-        spend = c.carryFrom;
-        continue;
+    for(let i = items.length; i >= 1 && k > 0; i--){
+      if(spend < 0) break;
+      if(history[i][k][spend] !== history[i-1][k][spend]){
+        const item = items[i-1];
+        picked.push(item);
+        spend -= item.price;
+        k -= 1;
       }
-      picked.push(c.item);
-      spend = c.prevS;
-      k -= 1;
     }
     return picked;
   }
