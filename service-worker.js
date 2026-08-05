@@ -1,4 +1,4 @@
-const CACHE_NAME = 'fantacalcio-toolkit-v4';
+const CACHE_NAME = 'fantacalcio-toolkit-v5';
 const FILES_TO_CACHE = [
   './fantacalcio_toolkit.html',
   './manifest.json',

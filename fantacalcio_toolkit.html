@@ -844,7 +844,14 @@ if (!window.storage) {
       squad[r] = slotsByRole[r] === 0 ? [] : reconstructRole(roleDPs[r], roleSpends[r]);
     }
 
-    return { squad, roleSpends, totalSpend: bestS, totalValue: bestVal };
+    // La spesa mostrata è sempre ricalcolata come somma delle Quotazioni reali dei
+    // giocatori scelti — mai dedotta dall'indice della tabella DP, anche se coincide,
+    // per garantire per costruzione che nessun giocatore risulti "scontato".
+    const trueRoleSpends = {};
+    for(const r of roles){ trueRoleSpends[r] = squad[r].reduce((s,p)=>s+p.price, 0); }
+    const trueTotalSpend = roles.reduce((s,r)=> s + trueRoleSpends[r], 0);
+
+    return { squad, roleSpends: trueRoleSpends, totalSpend: trueTotalSpend, totalValue: bestVal };
   }
 
   // ===================== MODALITA' A FASCE =====================
@@ -918,7 +925,9 @@ if (!window.storage) {
       const picks = reconstructRole(s.dpObj, spend);
       squad.push(...picks);
     });
-    return { feasible: true, squad, totalSpend: combined.totalSpend, totalValue: combined.totalValue, subs, roleBudgetCap };
+    // Spesa ricalcolata come somma reale delle Quotazioni scelte, non dedotta dalla DP.
+    const trueSpend = squad.reduce((s,p)=>s+p.price, 0);
+    return { feasible: true, squad, totalSpend: trueSpend, totalValue: combined.totalValue, subs, roleBudgetCap };
   }
 
   // Dopo aver trovato la squadra a valore massimo per il ruolo, prova ad avvicinarsi alla
