@@ -1081,7 +1081,27 @@ A;Orsolini;16;80;1`;
     return `formazione-ottimizzatore-${datePart}-${timePart}`;
   }
 
-  function downloadFile(content, filename, mimeType){
+  function fileTypeLabelFor(filename){
+    const ext = filename.slice(filename.lastIndexOf('.')).toLowerCase();
+    if(ext === '.json') return 'File JSON (*.json)';
+    if(ext === '.txt') return 'File di testo (*.txt)';
+    if(ext === '.xlsx') return 'File Excel (*.xlsx)';
+    return `File (*${ext})`;
+  }
+
+  async function downloadFile(content, filename, mimeType){
+    // Nell'app desktop (pywebview) un link con "download" verso un blob: URL non
+    // attiva un salvataggio ma fa navigare la finestra al contenuto grezzo — lì usiamo
+    // sempre il dialogo nativo di salvataggio invece del meccanismo Blob del browser.
+    if(window.pywebview && window.pywebview.api && window.pywebview.api.export_backup){
+      try{
+        const res = await window.pywebview.api.export_backup(content, filename, [fileTypeLabelFor(filename)]);
+        if(res && res.ok){ alert('File salvato in:\n' + res.path); }
+      }catch(err){
+        alert('Errore durante il salvataggio del file.');
+      }
+      return;
+    }
     const blob = new Blob([content], { type: mimeType });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
