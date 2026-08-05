@@ -707,6 +707,8 @@ if (!window.storage) {
 // ===================== OTTIMIZZATORE MODULE =====================
 (function(){
   const ROLE_LABELS = { P: '🧤 Portieri', D: '🛡️ Difensori', C: '🎯 Centrocampisti', A: '⚽ Attaccanti' };
+  const ROLE_PLAIN = { P: 'Portieri', D: 'Difensori', C: 'Centrocampisti', A: 'Attaccanti' };
+  let lastExportData = null;
 
   function parsePlayers(raw){
     const lines = raw.split('\n').map(l=>l.trim()).filter(l=>l.length>0);
@@ -1059,6 +1061,126 @@ A;Orsolini;16;80;1`;
     document.getElementById('o-fasceOptions').style.display = e.target.checked ? '' : 'none';
   });
 
+  // ===================== EXPORT RISULTATI =====================
+  function formatDateTimeIt(dt){
+    const pad = n => String(n).padStart(2,'0');
+    return `${pad(dt.getDate())}/${pad(dt.getMonth()+1)}/${dt.getFullYear()} ${pad(dt.getHours())}:${pad(dt.getMinutes())}`;
+  }
+
+  function exportBasename(dt){
+    const pad = n => String(n).padStart(2,'0');
+    const datePart = `${dt.getFullYear()}-${pad(dt.getMonth()+1)}-${pad(dt.getDate())}`;
+    const timePart = `${pad(dt.getHours())}${pad(dt.getMinutes())}`;
+    return `formazione-ottimizzatore-${datePart}-${timePart}`;
+  }
+
+  function downloadFile(content, filename, mimeType){
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  function csvEscape(value){
+    const s = String(value);
+    if(/[;"\n\r]/.test(s)){
+      return '"' + s.replace(/"/g,'""') + '"';
+    }
+    return s;
+  }
+
+  function exportJSON(){
+    if(!lastExportData) return;
+    const d = lastExportData;
+    const ruoli = {};
+    ['P','D','C','A'].forEach(r=>{
+      const rd = d.roles[r];
+      ruoli[ROLE_PLAIN[r]] = {
+        budgetSpeso: rd.spent,
+        budgetDisponibile: rd.cap,
+        giocatori: rd.players.map(p=>{
+          const entry = { nome: p.name, prezzo: p.price, fvm: p.fvm };
+          if(d.fasceMode) entry.fascia = p.fascia;
+          return entry;
+        })
+      };
+    });
+    const payload = {
+      esportatoIl: d.timestamp.toISOString(),
+      budgetTotale: d.budget,
+      budgetSpeso: d.totalSpend,
+      budgetRimasto: d.budget - d.totalSpend,
+      valoreTotale: d.totalValue,
+      modalitaFasce: d.fasceMode,
+      ruoli
+    };
+    downloadFile(JSON.stringify(payload, null, 2), exportBasename(d.timestamp) + '.json', 'application/json');
+  }
+
+  function exportTXT(){
+    if(!lastExportData) return;
+    const d = lastExportData;
+    const lines = [];
+    lines.push(`FORMAZIONE OTTIMIZZATORE — ${formatDateTimeIt(d.timestamp)}`);
+    lines.push(`Budget totale: ${d.budget} cr | Speso: ${d.totalSpend} cr | Rimasti: ${d.budget - d.totalSpend} cr | Valore atteso: ${d.totalValue.toFixed(0)}`);
+    lines.push('');
+    ['P','D','C','A'].forEach(r=>{
+      const rd = d.roles[r];
+      if(!rd.players.length) return;
+      const roleLine = d.fasceMode
+        ? `${ROLE_PLAIN[r].toUpperCase()} (speso ${rd.spent}/${rd.cap} cr)`
+        : `${ROLE_PLAIN[r].toUpperCase()} (speso ${rd.spent} cr)`;
+      lines.push(roleLine);
+      lines.push('');
+      rd.players.forEach(p=>{
+        const fasciaTag = d.fasceMode ? ` (F${p.fascia})` : '';
+        lines.push(`* ${p.name}${fasciaTag} — ${p.price} cr — FVM ${p.fvm}`);
+      });
+      lines.push('');
+    });
+    downloadFile(lines.join('\n'), exportBasename(d.timestamp) + '.txt', 'text/plain;charset=utf-8');
+  }
+
+  function exportXLSX(){
+    if(!lastExportData) return;
+    const d = lastExportData;
+    const header = d.fasceMode
+      ? ['Ruolo','Nome','Prezzo','FVM','Fascia','Budget Ruolo','Speso Ruolo']
+      : ['Ruolo','Nome','Prezzo','FVM','Budget Ruolo','Speso Ruolo'];
+    const rows = [header.join(';')];
+    ['P','D','C','A'].forEach(r=>{
+      const rd = d.roles[r];
+      rd.players.forEach(p=>{
+        const cells = [ROLE_PLAIN[r], p.name, p.price, p.fvm];
+        if(d.fasceMode) cells.push(p.fascia);
+        cells.push(rd.cap != null ? rd.cap : '', rd.spent);
+        rows.push(cells.map(csvEscape).join(';'));
+      });
+    });
+    const content = '\uFEFF' + rows.join('\r\n');
+    downloadFile(content, exportBasename(d.timestamp) + '.xlsx', 'text/csv;charset=utf-8');
+  }
+
+  function appendExportButtons(container){
+    const div = document.createElement('div');
+    div.className = 'row';
+    div.style.marginBottom = '14px';
+    div.innerHTML = `
+      <button class="secondary" id="o-exportJson">⬇️ Scarica JSON</button>
+      <button class="secondary" id="o-exportTxt">⬇️ Scarica TXT</button>
+      <button class="secondary" id="o-exportXlsx">⬇️ Scarica Excel</button>
+    `;
+    container.appendChild(div);
+    div.querySelector('#o-exportJson').addEventListener('click', exportJSON);
+    div.querySelector('#o-exportTxt').addEventListener('click', exportTXT);
+    div.querySelector('#o-exportXlsx').addEventListener('click', exportXLSX);
+  }
+
   function renderTieredResults(result, budget){
     const resultsEl = document.getElementById('o-results');
     resultsEl.innerHTML = '';
@@ -1088,6 +1210,24 @@ A;Orsolini;16;80;1`;
       </div>
     `;
     resultsEl.appendChild(scoreboard);
+
+    lastExportData = {
+      timestamp: new Date(),
+      fasceMode: true,
+      budget,
+      totalSpend: result.totalSpend,
+      totalValue: result.totalValue,
+      roles: {}
+    };
+    ['P','D','C','A'].forEach(r=>{
+      const roleResult = result.results[r];
+      lastExportData.roles[r] = {
+        spent: roleResult ? roleResult.totalSpend : 0,
+        cap: roleResult ? roleResult.roleBudgetCap : null,
+        players: (roleResult && roleResult.squad ? roleResult.squad : []).map(p=>({ name: p.name, price: p.price, fvm: p.fvm, fascia: p.fascia }))
+      };
+    });
+    appendExportButtons(resultsEl);
 
     ['P','D','C','A'].forEach(r=>{
       const roleResult = result.results[r];
@@ -1220,6 +1360,23 @@ A;Orsolini;16;80;1`;
       </div>
     `;
     resultsEl.appendChild(scoreboard);
+
+    lastExportData = {
+      timestamp: new Date(),
+      fasceMode: false,
+      budget,
+      totalSpend: result.totalSpend,
+      totalValue: result.totalValue,
+      roles: {}
+    };
+    ['P','D','C','A'].forEach(r=>{
+      lastExportData.roles[r] = {
+        spent: result.roleSpends[r] || 0,
+        cap: null,
+        players: (result.squad[r] || []).map(p=>({ name: p.name, price: p.price, fvm: p.fvm, fascia: null }))
+      };
+    });
+    appendExportButtons(resultsEl);
 
     ['P','D','C','A'].forEach(r=>{
       const list = result.squad[r];
