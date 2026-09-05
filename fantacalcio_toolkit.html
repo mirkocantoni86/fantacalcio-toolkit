@@ -169,6 +169,7 @@
   .scroll-table tr:last-child td{ border-bottom:none; }
   .scroll-table tr.row-bad{ background: rgba(220,38,38,0.08); }
   .scroll-table td.giornata{ font-weight:600; color:var(--muted); }
+  .scroll-table td.chosen-match{ box-shadow: inset 0 0 0 2px var(--pitch); background: rgba(0,82,224,0.06); }
 
   /* Varianti score-num (coerenti con .spent/.over esistenti) */
   .score-num.mid{ color: var(--gold); }
@@ -278,12 +279,33 @@
         </label>
       </div>
       <div class="hint">Se attivo, per ogni ruolo scegli quanti giocatori prendere da ciascuna fascia, con un budget massimo (e opzionalmente minimo) dedicato al ruolo. Se disattivo, il calcolo resta libero su tutto il budget e tutti i giocatori del ruolo, come oggi.</div>
+      <div class="row" style="margin-top:10px;">
+        <label style="display:flex; align-items:center; gap:8px; font-size:13px;">
+          <input type="checkbox" id="o-speriVincoli" style="width:auto;"> Vincoli lega Fanta SPERI
+        </label>
+      </div>
+      <div class="hint">Se attivo, aggiunge tre vincoli tipici di questa lega (massimo giocatori per squadra, minimo Under 21, minimo titolari veri per ruolo). Se disattivo, l'ottimizzatore si comporta esattamente come per qualunque altra lega.</div>
     </div>
 
     <div class="panel" id="o-fasceOptions" style="display:none;">
       <h2>🎚️ Configurazione fasce per ruolo</h2>
       <div class="hint">La somma di Fascia 1 + 2 + 3 deve corrispondere esattamente agli slot del ruolo. "Budget max" è la percentuale del budget totale riservata al ruolo (spesa massima). "Spesa minima" è una percentuale del budget massimo del ruolo — il calcolo proverà ad avvicinarcisi facendo upgrade mirati dentro la stessa fascia.</div>
       <div id="o-fasceRoles" style="margin-top:10px;"></div>
+    </div>
+
+    <div class="panel" id="o-speriOptions" style="display:none;">
+      <h2>🏆 Vincoli lega Fanta SPERI</h2>
+      <div class="row">
+        <div class="field"><label>Max giocatori per squadra</label><input type="number" id="o-speriMaxPerTeam" value="2" min="1"></div>
+        <div class="field"><label>Minimo giocatori U21</label><input type="number" id="o-speriMinU21" value="4" min="0"></div>
+      </div>
+      <div class="hint">Contano tutti i ruoli insieme. Richiedono le colonne <code>Squadra</code> e <code>U21</code> nel listone — vedi il formato qui sotto.</div>
+      <div class="hint" style="margin-top:10px; font-weight:600;">Minimo titolari veri per ruolo (giocatori con FVM sopra soglia)</div>
+      <div id="o-speriTitolari" style="margin-top:8px;"></div>
+      <div class="row" style="margin-top:10px;">
+        <button class="secondary" id="o-speriPresetBtn">⚡ Preset Fanta SPERI</button>
+      </div>
+      <div class="hint">Il preset imposta budget 320, slot 3-10-10-7, max 2 per squadra, min 4 U21 e i minimi titolari sopra.</div>
     </div>
 
     <div class="panel">
@@ -296,6 +318,7 @@ A;Lautaro;28;150;0.85;1
       <div class="hint">Una riga per giocatore, formato: <code>Ruolo;Nome;Quotazione;FVM;Fiducia;Fascia</code> — separatore <code>;</code> o <code>,</code> o tab. Ruolo = P / D / C / A.</div>
       <div class="hint"><b>Fiducia</b> (opzionale, colonna 5) è un moltiplicatore tuo personale sul FVM: <code>1</code> = ti fidi del numero così com'è, <code>1.3</code> = pensi renda il 30% più del previsto, <code>0.7</code> = pensi renda il 30% in meno. Se ometti la colonna, resta neutro (1).</div>
       <div class="hint"><b>Fascia</b> (opzionale, colonna 6, valori 1/2/3) — usata solo se "Usa suddivisione a fasce" è attivo qui sopra. Se ometti la colonna, il giocatore è trattato come Fascia 1.</div>
+      <div class="hint" id="o-speriFormatHint" style="display:none;"><b>Con "Vincoli lega Fanta SPERI" attivo il formato cambia</b>: <code>Ruolo;Nome;Squadra;Quotazione;FVM;Fiducia;Fascia;U21</code> — la colonna <code>Squadra</code> (terza) è obbligatoria, <code>U21</code> (ottava, opzionale) accetta <code>1</code>/<code>U21</code>/<code>SI</code>/<code>X</code> per marcare un giocatore Under 21.</div>
       <div class="row" style="margin-top:10px;">
         <button id="o-calcBtn">🧮 Calcola squadra ottimale</button>
         <button class="secondary" id="o-exampleBtn">🎲 Carica esempio</button>
@@ -365,22 +388,16 @@ A;Lautaro;28;150;0.85;1
 
   <div class="panel">
     <h2>📊 2. Fasce di difficoltà (5 livelli)</h2>
-    <div class="hint">Il rank 1-20 dell'avversario viene diviso in 5 fasce. Imposta i 4 confini tra una fascia e la successiva (valori crescenti). Default: divisione uniforme in blocchi da 4.</div>
+    <div class="hint">Il rank 1-20 dell'avversario viene diviso in 5 fasce. Imposta i 4 confini tra una fascia e la successiva (valori crescenti).</div>
     <div class="row" style="margin-top:8px;">
-      <div class="field"><label>🟢 Bassa fino a</label><input type="number" id="ab-th1" value="5" min="1" max="19"></div>
-      <div class="field"><label>🟩 Medio-bassa fino a</label><input type="number" id="ab-th2" value="8" min="2" max="19"></div>
-      <div class="field"><label>🟡 Media fino a</label><input type="number" id="ab-th3" value="13" min="3" max="19"></div>
-      <div class="field"><label>🟠 Medio-alta fino a</label><input type="number" id="ab-th4" value="18" min="4" max="19"></div>
-      <div class="field"><label>Incidenza qualità propria (%)</label><input type="number" id="ab-qualityWeight" value="0" min="0" max="100"></div>
+      <div class="field"><label>🟢 Bassa fino a</label><input type="number" id="ab-th1" value="6" min="1" max="19"></div>
+      <div class="field"><label>🟩 Medio-bassa fino a</label><input type="number" id="ab-th2" value="15" min="2" max="19"></div>
+      <div class="field"><label>🟡 Media fino a</label><input type="number" id="ab-th3" value="16" min="3" max="19"></div>
+      <div class="field"><label>🟠 Medio-alta fino a</label><input type="number" id="ab-th4" value="17" min="4" max="19"></div>
     </div>
-    <div class="hint">Oltre alla soglia "Medio-alta fino a" scatta automaticamente 🔴 <b>Alta</b>. "Incidenza qualità propria" abbassa l'indice se le squadre selezionate sono di per sé deboli, anche con calendario comodo sulla carta.</div>
+    <div class="hint">Oltre alla soglia "Medio-alta fino a" scatta automaticamente 🔴 <b>Alta</b>. Ogni giornata conta solo la partita più favorevole tra le squadre scelte — a parità di fascia si preferisce quella in casa.</div>
     <div class="row" style="margin-top:10px;">
-      <label style="display:flex; align-items:center; gap:8px; font-size:13px;"><input type="checkbox" id="ab-applyHomeAway" checked style="width:auto;"> Applica bonus/malus casa-trasferta</label>
-      <div class="field"><label>Punti casa/trasferta</label><input type="number" id="ab-homeAwayPoints" value="0.5" min="0" max="3" step="0.25"></div>
-    </div>
-    <div class="hint">Se attivo, giocare in <b>casa</b> rende il match leggermente più facile (rank effettivo dell'avversario ridotto), giocare in <b>trasferta</b> leggermente più difficile (rank aumentato) — di quanti punti lo decidi tu.</div>
-    <div class="row" style="margin-top:10px;">
-      <label style="display:flex; align-items:center; gap:8px; font-size:13px;"><input type="checkbox" id="ab-applyModificatore" checked style="width:auto;"> Modificatore difesa attivo nella mia lega</label>
+      <label style="display:flex; align-items:center; gap:8px; font-size:13px;"><input type="checkbox" id="ab-applyModificatore" style="width:auto;"> Modificatore difesa attivo nella mia lega</label>
       <div class="field"><label>Amplificazione P/D con modificatore</label><input type="number" id="ab-modAmplifier" value="1.8" min="1" max="3" step="0.1"></div>
     </div>
     <div class="hint">Il modificatore difesa premia/penalizza <b>solo Portieri e Difensori</b> in base ai gol subiti — quindi con modificatore attivo, un abbinamento sfavorevole pesa di più per questi due ruoli (le fasce difficili vengono amplificate). Per Centrocampisti/Attaccanti non cambia nulla, il modificatore non li riguarda.</div>
@@ -710,29 +727,51 @@ if (!window.storage) {
   const ROLE_PLAIN = { P: 'Portieri', D: 'Difensori', C: 'Centrocampisti', A: 'Attaccanti' };
   let lastExportData = null;
 
-  function parsePlayers(raw){
+  function parsePlayers(raw, speriMode){
     const lines = raw.split('\n').map(l=>l.trim()).filter(l=>l.length>0);
     const players = { P: [], D: [], C: [], A: [] };
     const errors = [];
+    let squadraColumnMissing = false;
+    let u21ColumnPresent = false;
+
     lines.forEach((line, idx)=>{
       const parts = line.split(/[;,\t]/).map(s=>s.trim());
-      if(parts.length < 4){
+      const minParts = speriMode ? 5 : 4;
+      if(parts.length < minParts){
         errors.push(`Riga ${idx+1}: formato non valido ("${line}")`);
         return;
       }
       const role = parts[0].toUpperCase();
       const name = parts[1];
-      const price = parseFloat(parts[2].replace(',', '.'));
-      const fvm = parseFloat(parts[3].replace(',', '.'));
+      let squadra = null, priceIdx, fvmIdx, trustIdx, fasciaIdx, u21Idx;
+      if(speriMode){
+        squadra = parts[2];
+        priceIdx = 3; fvmIdx = 4; trustIdx = 5; fasciaIdx = 6; u21Idx = 7;
+        // Se la colonna "Squadra" contiene un numero pulito, il listone è quasi certamente
+        // nel vecchio formato senza quella colonna (le colonne sono scalate di uno).
+        if(squadra !== '' && !isNaN(Number(squadra.replace(',', '.')))){
+          squadraColumnMissing = true;
+        }
+      } else {
+        priceIdx = 2; fvmIdx = 3; trustIdx = 4; fasciaIdx = 5;
+      }
+      const price = parseFloat((parts[priceIdx]||'').replace(',', '.'));
+      const fvm = parseFloat((parts[fvmIdx]||'').replace(',', '.'));
       let trust = 1;
-      if(parts.length >= 5 && parts[4] !== ''){
-        const t = parseFloat(parts[4].replace(',', '.'));
+      if(parts.length > trustIdx && parts[trustIdx] !== ''){
+        const t = parseFloat(parts[trustIdx].replace(',', '.'));
         if(!isNaN(t) && t > 0) trust = t;
       }
       let fascia = 1;
-      if(parts.length >= 6 && parts[5] !== ''){
-        const f = parseInt(parts[5], 10);
+      if(parts.length > fasciaIdx && parts[fasciaIdx] !== ''){
+        const f = parseInt(parts[fasciaIdx], 10);
         if(f === 1 || f === 2 || f === 3) fascia = f;
+      }
+      let u21 = false;
+      if(speriMode && parts.length > u21Idx && parts[u21Idx] !== ''){
+        u21ColumnPresent = true;
+        const rawU21 = parts[u21Idx].trim().toUpperCase();
+        u21 = (rawU21 === '1' || rawU21 === 'U21' || rawU21 === 'SI' || rawU21 === 'SÌ' || rawU21 === 'TRUE' || rawU21 === 'X');
       }
       if(!ROLE_LABELS[role]){
         errors.push(`Riga ${idx+1}: ruolo "${parts[0]}" non riconosciuto (usa P/D/C/A)`);
@@ -743,9 +782,9 @@ if (!window.storage) {
         return;
       }
       const value = fvm * trust;
-      players[role].push({ name, price: Math.max(0,Math.round(price)), fvm, trust, value, fascia });
+      players[role].push({ name, squadra, price: Math.max(0,Math.round(price)), fvm, trust, value, fascia, u21 });
     });
-    return { players, errors };
+    return { players, errors, squadraColumnMissing, u21ColumnPresent };
   }
 
   function roleKnapsack(items, slots, budgetCap){
@@ -1068,6 +1107,57 @@ A;Orsolini;16;80;1`;
     document.getElementById('o-fasceOptions').style.display = e.target.checked ? '' : 'none';
   });
 
+  // ===================== VINCOLI FANTA SPERI =====================
+  const DEFAULT_TITOLARI = {
+    P: { count: 1, minFvm: 40 },
+    D: { count: 5, minFvm: 40 },
+    C: { count: 5, minFvm: 40 },
+    A: { count: 4, minFvm: 60 },
+  };
+
+  function buildSperiTitolariInputs(){
+    const container = document.getElementById('o-speriTitolari');
+    container.innerHTML = '';
+    ['P','D','C','A'].forEach(r=>{
+      const def = DEFAULT_TITOLARI[r];
+      const div = document.createElement('div');
+      div.className = 'row';
+      div.innerHTML = `
+        <div class="field" style="flex:0 0 140px;"><label>${ROLE_LABELS[r]}: minimo</label><input type="number" id="o-speri-${r}-count" value="${def.count}" min="0"></div>
+        <div class="field"><label>FVM minimo</label><input type="number" id="o-speri-${r}-minfvm" value="${def.minFvm}" min="0"></div>
+      `;
+      container.appendChild(div);
+    });
+  }
+  buildSperiTitolariInputs();
+
+  document.getElementById('o-speriVincoli').addEventListener('change', (e)=>{
+    document.getElementById('o-speriOptions').style.display = e.target.checked ? '' : 'none';
+    document.getElementById('o-speriFormatHint').style.display = e.target.checked ? '' : 'none';
+  });
+
+  document.getElementById('o-speriPresetBtn').addEventListener('click', ()=>{
+    document.getElementById('o-speriVincoli').checked = true;
+    document.getElementById('o-speriVincoli').dispatchEvent(new Event('change'));
+    document.getElementById('o-budget').value = 320;
+    document.getElementById('o-slotsP').value = 3;
+    document.getElementById('o-slotsD').value = 10;
+    document.getElementById('o-slotsC').value = 10;
+    document.getElementById('o-slotsA').value = 7;
+    document.getElementById('o-speriMaxPerTeam').value = 2;
+    document.getElementById('o-speriMinU21').value = 4;
+    ['P','D','C','A'].forEach(r=>{
+      document.getElementById(`o-speri-${r}-count`).value = DEFAULT_TITOLARI[r].count;
+      document.getElementById(`o-speri-${r}-minfvm`).value = DEFAULT_TITOLARI[r].minFvm;
+    });
+    if(document.getElementById('o-useFasce').checked){
+      document.getElementById('o-useFasce').checked = false;
+      document.getElementById('o-useFasce').dispatchEvent(new Event('change'));
+    }
+    buildFasceRoleInputs();
+    alert('Preset Fanta SPERI applicato: budget 320, slot 3-10-10-7, max 2 per squadra, min 4 U21, minimi titolari impostati.');
+  });
+
   // ===================== EXPORT RISULTATI =====================
   function formatDateTimeIt(dt){
     const pad = n => String(n).padStart(2,'0');
@@ -1282,6 +1372,116 @@ A;Orsolini;16;80;1`;
     });
   }
 
+  // ===================== RIPARAZIONE VINCOLI FANTA SPERI =====================
+  // Il knapsack ottimizza ogni ruolo (o fascia) in modo indipendente: non può "sapere"
+  // quanti giocatori della stessa squadra o U21 ci sono già in un ALTRO ruolo. Questi tre
+  // vincoli attraversano i ruoli, quindi si applicano DOPO l'ottimizzazione con una
+  // riparazione greedy: si scambia il giocatore che viola meno vale con la migliore
+  // alternativa valida (stessa fascia se attiva, budget rispettato), ripetendo finché
+  // tutti i vincoli non sono soddisfatti o non c'è più nessuna alternativa possibile.
+  const NO_TEAM = '__NESSUNA_SQUADRA__';
+
+  function applySperiConstraints(initialSquad, playersByRole, config, isFasceMode, roleBudgetCaps, totalBudget){
+    const roles = ['P','D','C','A'];
+    const squad = {};
+    roles.forEach(r => squad[r] = (initialSquad[r]||[]).slice());
+
+    const roleSpend = r => squad[r].reduce((s,p)=>s+p.price,0);
+    const totalSpend = () => roles.reduce((s,r)=>s+roleSpend(r),0);
+    const flatEntries = () => {
+      const out = [];
+      roles.forEach(r => squad[r].forEach(p => out.push({ role:r, player:p })));
+      return out;
+    };
+    const teamCounts = () => {
+      const counts = {};
+      flatEntries().forEach(({player})=>{
+        const t = player.squadra || NO_TEAM;
+        counts[t] = (counts[t]||0)+1;
+      });
+      return counts;
+    };
+    const candidatesFor = (role, fascia) => {
+      const inSquad = new Set(squad[role]);
+      return playersByRole[role].filter(p => !inSquad.has(p) && (!isFasceMode || p.fascia === fascia));
+    };
+    const budgetOk = (role, priceDelta) => {
+      if(isFasceMode && roleBudgetCaps[role] != null && roleSpend(role)+priceDelta > roleBudgetCaps[role]) return false;
+      if(totalSpend()+priceDelta > totalBudget) return false;
+      return true;
+    };
+    const performSwap = (role, outP, inP) => {
+      const idx = squad[role].indexOf(outP);
+      squad[role][idx] = inP;
+    };
+
+    function tryFixMaxPerTeam(){
+      if(!config.maxPerTeam) return null;
+      const counts = teamCounts();
+      const overTeam = Object.keys(counts).find(t => t !== NO_TEAM && counts[t] > config.maxPerTeam);
+      if(!overTeam) return null;
+      const entries = flatEntries().filter(e => e.player.squadra === overTeam).sort((a,b)=>a.player.value-b.player.value);
+      for(const target of entries){
+        const candidates = candidatesFor(target.role, target.player.fascia)
+          .filter(p => p.squadra !== overTeam && (counts[p.squadra||NO_TEAM]||0) < config.maxPerTeam)
+          .filter(p => budgetOk(target.role, p.price - target.player.price))
+          .sort((a,b)=>b.value-a.value);
+        if(candidates.length){ performSwap(target.role, target.player, candidates[0]); return { fixed:true }; }
+      }
+      return { fixed:false, message:`Troppi giocatori da ${overTeam} (max ${config.maxPerTeam} per squadra): nessuna alternativa disponibile in altre squadre entro il budget.` };
+    }
+
+    function tryFixU21(){
+      if(!config.minU21) return null;
+      const current = flatEntries().filter(e=>e.player.u21).length;
+      if(current >= config.minU21) return null;
+      const nonU21 = flatEntries().filter(e => !e.player.u21).sort((a,b)=>a.player.value-b.player.value);
+      const counts = teamCounts();
+      for(const target of nonU21){
+        const candidates = candidatesFor(target.role, target.player.fascia)
+          .filter(p => p.u21)
+          .filter(p => !config.maxPerTeam || p.squadra === target.player.squadra || (counts[p.squadra||NO_TEAM]||0) < config.maxPerTeam)
+          .filter(p => budgetOk(target.role, p.price - target.player.price))
+          .sort((a,b)=>b.value-a.value);
+        if(candidates.length){ performSwap(target.role, target.player, candidates[0]); return { fixed:true }; }
+      }
+      return { fixed:false, message:`Mancano ${config.minU21-current} giocatori U21 (attuali: ${current}/${config.minU21}): nessuna alternativa U21 disponibile entro il budget.` };
+    }
+
+    function tryFixTitolari(){
+      for(const r of roles){
+        const cfg = config.titolari[r];
+        if(!cfg || !cfg.count) continue;
+        const current = squad[r].filter(p => p.fvm >= cfg.minFvm).length;
+        if(current >= cfg.count) continue;
+        const belowThreshold = squad[r].filter(p => p.fvm < cfg.minFvm).sort((a,b)=>a.fvm-b.fvm);
+        const counts = teamCounts();
+        for(const outP of belowThreshold){
+          const candidates = candidatesFor(r, outP.fascia)
+            .filter(p => p.fvm >= cfg.minFvm)
+            .filter(p => !config.maxPerTeam || p.squadra === outP.squadra || (counts[p.squadra||NO_TEAM]||0) < config.maxPerTeam)
+            .filter(p => budgetOk(r, p.price - outP.price))
+            .sort((a,b)=>b.value-a.value);
+          if(candidates.length){ performSwap(r, outP, candidates[0]); return { fixed:true }; }
+        }
+        return { fixed:false, message:`${ROLE_LABELS[r]}: mancano ${cfg.count-current} titolari con FVM≥${cfg.minFvm} (attuali: ${current}/${cfg.count}): nessuna alternativa disponibile entro il budget.` };
+      }
+      return null;
+    }
+
+    const maxIterations = 500;
+    for(let iter=0; iter<maxIterations; iter++){
+      const teamFix = tryFixMaxPerTeam();
+      if(teamFix){ if(!teamFix.fixed) return { ok:false, message: teamFix.message }; continue; }
+      const u21Fix = tryFixU21();
+      if(u21Fix){ if(!u21Fix.fixed) return { ok:false, message: u21Fix.message }; continue; }
+      const titolariFix = tryFixTitolari();
+      if(titolariFix){ if(!titolariFix.fixed) return { ok:false, message: titolariFix.message }; continue; }
+      return { ok:true, squad };
+    }
+    return { ok:false, message:'Vincoli in conflitto tra loro: impossibile trovare una soluzione che li soddisfi tutti entro un numero ragionevole di tentativi.' };
+  }
+
   document.getElementById('o-calcBtn').addEventListener('click', ()=>{
     const errEl = document.getElementById('o-errMsg');
     const statusEl = document.getElementById('o-statusMsg');
@@ -1303,7 +1503,13 @@ A;Orsolini;16;80;1`;
     const raw = document.getElementById('o-playerData').value;
     if(!raw.trim()){ errEl.textContent = 'Incolla prima i dati del listone.'; return; }
 
-    const { players, errors } = parsePlayers(raw);
+    const speriMode = document.getElementById('o-speriVincoli').checked;
+    const { players, errors, squadraColumnMissing, u21ColumnPresent } = parsePlayers(raw, speriMode);
+
+    if(speriMode && squadraColumnMissing){
+      errEl.textContent = 'Il listone non sembra avere la colonna "Squadra" richiesta dai vincoli Fanta SPERI (terza colonna). Formato: Ruolo;Nome;Squadra;Quotazione;FVM;Fiducia;Fascia;U21 — oppure disattiva i vincoli.';
+      return;
+    }
 
     for(const r of ['P','D','C','A']){
       if(players[r].length < slotsByRole[r]){
@@ -1314,6 +1520,24 @@ A;Orsolini;16;80;1`;
     if(errEl.textContent) return;
 
     const useFasce = document.getElementById('o-useFasce').checked;
+
+    let speriConfig = null;
+    if(speriMode){
+      const maxPerTeam = parseInt(document.getElementById('o-speriMaxPerTeam').value, 10) || 0;
+      let minU21 = parseInt(document.getElementById('o-speriMinU21').value, 10) || 0;
+      if(minU21 > 0 && !u21ColumnPresent){
+        alert('La colonna U21 non è presente nel listone: il vincolo minimo U21 è stato disattivato per questo calcolo.');
+        minU21 = 0;
+      }
+      const titolari = {};
+      ['P','D','C','A'].forEach(r=>{
+        titolari[r] = {
+          count: parseInt(document.getElementById(`o-speri-${r}-count`).value, 10) || 0,
+          minFvm: parseFloat(document.getElementById(`o-speri-${r}-minfvm`).value) || 0,
+        };
+      });
+      speriConfig = { maxPerTeam, minU21, titolari };
+    }
 
     statusEl.textContent = 'Calcolo in corso...';
     setTimeout(()=>{
@@ -1345,9 +1569,43 @@ A;Orsolini;16;80;1`;
             throw new Error(`La somma delle percentuali di budget per ruolo (${pctSum}%) supera il 100%.`);
           }
           const result = optimizeWithTiers(players, slotsByRole, budget, roleConfig);
+          if(speriMode){
+            const squadByRole = {}, capsByRole = {};
+            ['P','D','C','A'].forEach(r=>{
+              squadByRole[r] = result.results[r] ? result.results[r].squad : [];
+              capsByRole[r] = result.results[r] ? result.results[r].roleBudgetCap : null;
+            });
+            const repaired = applySperiConstraints(squadByRole, players, speriConfig, true, capsByRole, budget);
+            if(!repaired.ok){
+              errEl.textContent = 'Vincoli Fanta SPERI non soddisfacibili: ' + repaired.message;
+              statusEl.textContent = '';
+              return;
+            }
+            ['P','D','C','A'].forEach(r=>{
+              if(result.results[r]){
+                result.results[r].squad = repaired.squad[r];
+                result.results[r].totalSpend = repaired.squad[r].reduce((s,p)=>s+p.price,0);
+                result.results[r].totalValue = repaired.squad[r].reduce((s,p)=>s+p.value,0);
+              }
+            });
+            result.totalSpend = ['P','D','C','A'].reduce((s,r)=> s+(result.results[r]?result.results[r].totalSpend:0), 0);
+            result.totalValue = ['P','D','C','A'].reduce((s,r)=> s+(result.results[r]?result.results[r].totalValue:0), 0);
+          }
           renderTieredResults(result, budget);
         } else {
           const result = optimizeWithTrace(players, slotsByRole, budget);
+          if(speriMode){
+            const repaired = applySperiConstraints(result.squad, players, speriConfig, false, null, budget);
+            if(!repaired.ok){
+              errEl.textContent = 'Vincoli Fanta SPERI non soddisfacibili: ' + repaired.message;
+              statusEl.textContent = '';
+              return;
+            }
+            result.squad = repaired.squad;
+            ['P','D','C','A'].forEach(r=>{ result.roleSpends[r] = repaired.squad[r].reduce((s,p)=>s+p.price,0); });
+            result.totalSpend = ['P','D','C','A'].reduce((s,r)=>s+result.roleSpends[r], 0);
+            result.totalValue = ['P','D','C','A'].reduce((s,r)=>s+repaired.squad[r].reduce((s2,p)=>s2+p.value,0), 0);
+          }
           renderResults(result, budget, errors);
         }
         statusEl.textContent = '';
@@ -1722,7 +1980,8 @@ let currentOffense = { ...DEFAULT_OFFENSE };
 let currentDefense = { ...DEFAULT_DEFENSE };
 const ROLE_LABELS = { P: 'Portieri', D: 'Difensori', C: 'Centrocampisti', A: 'Attaccanti' };
 const TIER_ICONS = { "bassa":"🟢", "medio-bassa":"🟩", "media":"🟡", "medio-alta":"🟠", "alta":"🔴" };
-const TIER_WEIGHTS = { "bassa": 0, "medio-bassa": 0.15, "media": 0.35, "medio-alta": 0.65, "alta": 1.0 };
+const TIER_POINTS = { "bassa": 2, "medio-bassa": 1.5, "media": 1, "medio-alta": 0.5, "alta": 0 };
+const TIER_ORDER = { "bassa": 0, "medio-bassa": 1, "media": 2, "medio-alta": 3, "alta": 4 };
 
 function buildRankGrid(gridId, dataObj){
   const grid = document.getElementById(gridId);
@@ -1795,10 +2054,9 @@ function buildTeamSelects(){
 
 document.getElementById('ab-numTeams').addEventListener('change', buildTeamSelects);
 document.getElementById('ab-ruolo').addEventListener('change', ()=>{ updateRoleHint(); safeRecalc(); });
-['ab-th1','ab-th2','ab-th3','ab-th4','ab-qualityWeight','ab-homeAwayPoints','ab-modAmplifier'].forEach(id=>{
+['ab-th1','ab-th2','ab-th3','ab-th4','ab-modAmplifier'].forEach(id=>{
   document.getElementById(id).addEventListener('input', safeRecalc);
 });
-document.getElementById('ab-applyHomeAway').addEventListener('change', safeRecalc);
 document.getElementById('ab-applyModificatore').addEventListener('change', safeRecalc);
 
 function safeRecalc(){
@@ -1823,14 +2081,9 @@ function tierFor(rank, thresholds){
   return 'alta';
 }
 
-function difficultyFor(opponent, role, home){
+function difficultyFor(opponent, role){
   const usesOffense = (role === 'P' || role === 'D');
-  let rank = usesOffense ? currentOffense[opponent] : currentDefense[opponent];
-  const applyHomeAway = document.getElementById('ab-applyHomeAway').checked;
-  if(applyHomeAway){
-    const points = parseFloat(document.getElementById('ab-homeAwayPoints').value) || 0;
-    rank = rank + (home ? -points : points);
-  }
+  const rank = usesOffense ? currentOffense[opponent] : currentDefense[opponent];
   return tierFor(rank, getThresholds());
 }
 
@@ -1841,39 +2094,10 @@ function getSchedule(team, role){
     if(match){
       const opponent = match[0]===team ? match[1] : match[0];
       const home = match[0]===team;
-      schedule.push({ giornata: idx+1, opponent, home, tier: difficultyFor(opponent, role, home) });
+      schedule.push({ giornata: idx+1, opponent, home, tier: difficultyFor(opponent, role) });
     }
   });
   return schedule;
-}
-
-function ownQualityRank(team, role){
-  const usesOwnDefense = (role === 'P' || role === 'D');
-  return usesOwnDefense ? currentDefense[team] : currentOffense[team];
-}
-
-function computeRawIndice(teams, role){
-  const schedules = teams.map(t => getSchedule(t, role));
-  const totalWeeks = schedules[0].length;
-  const usesModificatore = (role === 'P' || role === 'D') && document.getElementById('ab-applyModificatore').checked;
-  const amplifier = usesModificatore ? (parseFloat(document.getElementById('ab-modAmplifier').value) || 1) : 1;
-  let penaltySum = 0;
-  for(let i=0;i<totalWeeks;i++){
-    const tiers = schedules.map(s => s[i].tier);
-    const allSame = tiers.every(t => t === tiers[0]);
-    if(allSame){ penaltySum += TIER_WEIGHTS[tiers[0]] * amplifier; }
-  }
-  const penalty = (penaltySum / totalWeeks) * 100;
-  return Math.max(0, Math.round(100 - penalty));
-}
-
-function computeFinalIndice(teams, role){
-  const raw = computeRawIndice(teams, role);
-  const w = Math.max(0, Math.min(100, parseInt(document.getElementById('ab-qualityWeight').value, 10) || 0)) / 100;
-  const avgOwnRank = teams.reduce((s,t)=> s + ownQualityRank(t, role), 0) / teams.length;
-  const qualityFactor = avgOwnRank / 20;
-  const blended = raw * (1 - w) + raw * qualityFactor * w;
-  return Math.max(0, Math.round(blended));
 }
 
 function combinations(arr, k){
@@ -1884,6 +2108,43 @@ function combinations(arr, k){
   }
   helper(0, []);
   return results;
+}
+
+// Per ogni giornata sceglie, tra le squadre selezionate, la partita con la fascia più
+// favorevole (a parità di fascia, quella in casa) — è quella che "copre" il ruolo quel
+// turno. Il moltiplicatore del modificatore difesa (solo P/D) accentua la penalità dei
+// match scomodi: punti_finali = max(0, 2 - (2 - punti) × moltiplicatore).
+function computeWeeklyPicks(teams, role){
+  const schedules = teams.map(t => getSchedule(t, role));
+  const totalWeeks = schedules[0].length;
+  const usesModificatore = (role === 'P' || role === 'D') && document.getElementById('ab-applyModificatore').checked;
+  const amplifier = usesModificatore ? (parseFloat(document.getElementById('ab-modAmplifier').value) || 1) : 1;
+
+  const picks = [];
+  for(let i=0;i<totalWeeks;i++){
+    const entries = schedules.map(s => s[i]);
+    let best = entries[0], bestIdx = 0;
+    for(let k=1;k<entries.length;k++){
+      const e = entries[k];
+      if(TIER_ORDER[e.tier] < TIER_ORDER[best.tier] || (TIER_ORDER[e.tier]===TIER_ORDER[best.tier] && e.home && !best.home)){
+        best = e; bestIdx = k;
+      }
+    }
+    const rawPoints = TIER_POINTS[best.tier];
+    const finalPoints = usesModificatore ? Math.max(0, 2 - (2 - rawPoints) * amplifier) : rawPoints;
+    picks.push({ giornata: i+1, entries, bestIdx, tier: best.tier, home: best.home, rawPoints, finalPoints });
+  }
+  return picks;
+}
+
+function computeRawIndice(teams, role){
+  const picks = computeWeeklyPicks(teams, role);
+  return Math.round(picks.reduce((s,p)=>s+p.rawPoints,0) / (2*picks.length) * 100);
+}
+
+function computeFinalIndice(teams, role){
+  const picks = computeWeeklyPicks(teams, role);
+  return Math.round(picks.reduce((s,p)=>s+p.finalPoints,0) / (2*picks.length) * 100);
 }
 
 function runCalculation(){
@@ -1900,61 +2161,62 @@ function runCalculation(){
     return;
   }
 
-  const schedules = teams.map(t => getSchedule(t, role));
-  const totalWeeks = schedules[0].length;
+  const picks = computeWeeklyPicks(teams, role);
+  const indiceFinale = Math.round(picks.reduce((s,p)=>s+p.finalPoints,0) / (2*picks.length) * 100);
+  const indiceGrezzo = Math.round(picks.reduce((s,p)=>s+p.rawPoints,0) / (2*picks.length) * 100);
 
-  let coverage = 0;
-  let coverageHome = 0, coverageAway = 0;
-  const rows = [];
-  for(let i=0;i<totalWeeks;i++){
-    const weekEntries = schedules.map(s => s[i]);
-    const tiers = weekEntries.map(e => e.tier);
-    const bad = tiers.every(t => t === 'alta');
-    const hasCoverage = tiers.some(t => t === 'bassa' || t === 'medio-bassa');
-    if(hasCoverage) coverage++;
-    weekEntries.forEach(e => {
-      if(e.tier === 'bassa' || e.tier === 'medio-bassa'){
-        if(e.home) coverageHome++; else coverageAway++;
-      }
-    });
-    rows.push({ giornata: i+1, entries: weekEntries, bad });
-  }
-
-  const rawIndice = computeRawIndice(teams, role);
-  const indice = computeFinalIndice(teams, role);
-
-  renderResults(teams, role, indice, rawIndice, coverage, totalWeeks, rows, coverageHome, coverageAway);
+  renderResults(teams, role, picks, indiceFinale, indiceGrezzo);
   renderSuggestions(role, n, teams);
 }
 
-function renderResults(teams, role, indice, rawIndice, coverage, totalWeeks, rows, coverageHome, coverageAway){
+function renderResults(teams, role, picks, indiceFinale, indiceGrezzo){
   const el = document.getElementById('ab-results');
   el.innerHTML = '';
 
+  let favorevoli=0, medie=0, difficili=0, casaCount=0, trasfertaCount=0;
+  picks.forEach(p=>{
+    if(p.tier==='bassa'||p.tier==='medio-bassa') favorevoli++;
+    else if(p.tier==='media') medie++;
+    else difficili++;
+    if(p.home) casaCount++; else trasfertaCount++;
+  });
+
   const scoreboard = document.createElement('div');
   scoreboard.className = 'scoreboard';
-  const indiceClass = indice >= 80 ? '' : (indice >= 60 ? 'mid' : 'bad');
-  const coverageMatches = coverageHome + coverageAway;
+  const indiceClass = indiceFinale >= 80 ? '' : (indiceFinale >= 60 ? 'mid' : 'bad');
   scoreboard.innerHTML = `
     <div class="score-cell">
       <div class="score-label">Indice finale</div>
-      <div class="score-num ${indiceClass}">${indice}/100</div>
+      <div class="score-num ${indiceClass}">${indiceFinale}%</div>
     </div>
     <div class="score-cell">
       <div class="score-label">Indice grezzo (solo calendario)</div>
-      <div class="score-num" style="color:var(--muted); font-size:22px;">${rawIndice}/100</div>
-    </div>
-    <div class="score-cell">
-      <div class="score-label">Copertura (almeno 1 in fascia bassa o medio-bassa)</div>
-      <div class="score-num">${coverage}/${totalWeeks}</div>
-    </div>
-    <div class="score-cell">
-      <div class="score-label">Partite di copertura: Casa / Trasferta</div>
-      <div class="score-num" style="font-size:20px;">${coverageHome} 🏠 / ${coverageAway} ✈️</div>
-      <div style="font-size:10.5px; color:var(--muted); margin-top:2px;">solo le ${coverageMatches} partite in fascia bassa/medio-bassa, sommate su tutte le squadre</div>
+      <div class="score-num" style="color:var(--muted); font-size:22px;">${indiceGrezzo}%</div>
     </div>
   `;
   el.appendChild(scoreboard);
+
+  const scoreboard2 = document.createElement('div');
+  scoreboard2.className = 'scoreboard';
+  scoreboard2.innerHTML = `
+    <div class="score-cell">
+      <div class="score-label">🟢 Giornate favorevoli</div>
+      <div class="score-num">${favorevoli}/${picks.length}</div>
+    </div>
+    <div class="score-cell">
+      <div class="score-label">🟡 Giornate medie</div>
+      <div class="score-num" style="color:var(--gold);">${medie}/${picks.length}</div>
+    </div>
+    <div class="score-cell">
+      <div class="score-label">🔴 Giornate difficili</div>
+      <div class="score-num ${difficili>0?'bad':''}">${difficili}/${picks.length}</div>
+    </div>
+    <div class="score-cell">
+      <div class="score-label">Casa / Trasferta</div>
+      <div class="score-num" style="font-size:20px;">${casaCount} 🏠 / ${trasfertaCount} ✈️</div>
+    </div>
+  `;
+  el.appendChild(scoreboard2);
 
   const roleLabel = ROLE_LABELS[role];
   const panel = document.createElement('div');
@@ -1966,10 +2228,13 @@ function renderResults(teams, role, indice, rawIndice, coverage, totalWeeks, row
   table.innerHTML = `
     <thead><tr><th>Giornata</th>${teams.map(t=>`<th>${t}</th>`).join('')}</tr></thead>
     <tbody>
-      ${rows.map(r=>`
-        <tr class="${r.bad ? 'row-bad' : ''}">
-          <td class="giornata">${r.giornata}</td>
-          ${r.entries.map(e=>`<td>vs ${e.opponent} (${e.home?'C':'T'}) <span class="tag ${e.tier}">${TIER_ICONS[e.tier]} ${e.tier}</span></td>`).join('')}
+      ${picks.map(p=>`
+        <tr>
+          <td class="giornata">${p.giornata}</td>
+          ${p.entries.map((e,idx)=>{
+            const chosen = idx === p.bestIdx;
+            return `<td class="${chosen?'chosen-match':''}">${chosen?'✅ ':''}vs ${e.opponent} (${e.home?'C':'T'}) <span class="tag ${e.tier}">${TIER_ICONS[e.tier]} ${e.tier}</span></td>`;
+          }).join('')}
         </tr>
       `).join('')}
     </tbody>
